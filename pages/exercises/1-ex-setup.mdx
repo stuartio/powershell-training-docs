@@ -1,0 +1,15 @@
+import { Steps } from 'nextra/components'
+
+<Steps>
+{<h3>New File</h3>}
+Create a file named **_provider.tf_** in your local clone of your GitHub repository. Populate it as the example above.
+
+{<h3>Update</h3>}
+Update the Akamai required version to use the `~>` operator, and specify only the Major and Minor versions, e.g. 1.1, rather than 1.1.0. This means that Terraform will install any minor updates when running `init`, but not the next major version. Make sure Terraform uses the most recent version.
+
+{<h3>Run</h3>}
+Run `terraform init`. Which version was installed?
+
+{<h3>Commit</h3>}
+Commit your change and push it to GitHub. 
+</Steps>

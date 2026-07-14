@@ -1,0 +1,45 @@
+# 1. Getting Started
+
+PowerShell is an interactive shell designed around ease of use and user friendliness. It sits atop your existing system and therefore has access to all commands you can run in cmd.exe, bash etc., as well as a vast selection of its own commands you can run.
+
+Commands are provided in the form of functions or cmdlets (pronounced command-lets), which are essentially the same thing. The name of the command typically takes the form Verb-Noun, e.g. `Get-Property`, which should hopefully make it easy to discover the commands you wish (see Discovery).
+
+## Object-based Architecture
+
+PowerShell is object-based, rather than text-based like bash. This means that most functions, when returning something more complex than a string or integer, will return an object which you can sort or filter, or access child objects of.
+
+For example
+
+```PowerShell
+$Files = Get-ChildItem # This command returns an array of files (if more than one entry found)
+$Files[0]
+
+❯_  $Files[0] # You can access an item in the array by its index
+
+    Directory: C:\code\powershell-training-docs
+
+Mode                 LastWriteTime         Length Name
+----                 -------------         ------ ----
+d----          14/07/2026    10:42                .github
+
+$Files[0].FullName # You can access a specific property of a given object individually
+C:\code\powershell-training-docs\.github
+```
+
+## modules
+
+PowerShell comes preinstalled with a large selection of functions, but you can also install external modules for almost anything from the PowerShell Gallery, or make your own.
+
+Modules can be installed by running
+
+```powershell
+Install-Module SomeModule
+```
+
+or on later versions
+
+```powershell
+Install-PSResource SomeModule
+```
+
+The `Install-PSResource` command is typically much faster.

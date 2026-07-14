@@ -1,0 +1,150 @@
+import { Callout } from 'nextra/components'
+
+# Generating Akamai API Credentials
+
+Before we can use PowerShell with Akamai, we need to set up API credentials. These credentials will allow PowerShell to interact with Akamai's Property Manager and Security services.
+
+Akamai APIs typically use an authentication mechanism called EdgeGrid, which requires digitally signing API calls in a complex way using the four elements of your API client. This is handled natively by PowerShell, which calculates the necessary Authorization header value and adds it to all calls as needed.
+
+## Steps to Create Akamai API Credentials
+
+1. Log in to the [Akamai Control Center](https://control.akamai.com/).
+2. Navigate to "Identity & Access" → "API Users & Keys".
+3. Click on "Create API Client".
+4. Under "Select API client type" make sure "Myself" is selected on the left, and you choose the "Advanced" option
+![Akamai API Client Creation](/requirements-akamai-api-create1.png)
+5. Fill in the form:
+   - Name: Choose a descriptive name (e.g., "PowerShell-Akamai")
+   - Description: Briefly describe the purpose (e.g., "API client for PowerShell automation")
+   - Make sure IP Allowlist is **unchecked**
+   - **Check** the box for "Let this client manage multiple accounts"
+   - **Uncheck** the box for "Let this client create credentials for another API client"
+   - **Check the Select APIs** option, and in the popup select _at least_ these two APIs:
+      - Property Manager API (PAPI) : read/write
+      - Application Security (_not_ the internal version, if this is available): read/write
+   - Under groups, leave the default ("Same groups as |username|") selected
+6. Click "Create API Client".
+![Akamai API Client Creation](/requirements-akamai-api-create2.png)
+7. In the next screen click "Download API Client"
+![Akamai API Client Download](/requirements-akamai-api-download.png)
+
+<Callout type="warning" emoji="⚠️">
+**Important:** After creation, you'll see the client secret and other credentials. Download or copy these immediately—you won't be able to access the client secret again.
+</Callout>
+
+## Understanding Your Akamai API Credentials
+
+You'll receive four pieces of information:
+
+1. Client Token
+2. Client Secret
+3. Access Token
+4. Base URL
+
+All of these are required to authenticate your API requests to Akamai.
+
+## Using Akamai Credentials with PowerShell
+
+There are several approaches to authenticating Akamai API calls with PowerShell.
+
+### EdgeRC
+
+The simplest approach to authentication is to use an edgerc file. All Akamai PowerShell commands (with the exception of the Netstorage Usage API) support reading a section from an EdgeRC file, either with its default location (`~/.edgerc`) or with a user-provided path.
+
+EdgeRC Files are simple text files with section headers to support multiple credentials in a single file.
+
+For example, here is a file with two sections:
+
+```
+[default]
+client_secret = C113nt53KR3TN6N90yVuAgICxIRwsObLi0E67/N8eRN=
+host = akab-h05tnam3wl42son7nktnlnnx-kbob3i3v.luna.akamaiapis.net
+access_token = akab-acc35t0k3nodujqunph3w7hzp7-gtm6ij
+client_token = akab-c113ntt0k3n4qtari252bfxxbsl-yvsdj
+
+[my-other-account]
+client_secret = C113nt53KR3TN6N90yVuAgICxIRwsObLi0E67/N8eRN=
+host = akab-h05tnam3wl42son7nktnlnnx-kbob3i3v.luna.akamaiapis.net
+access_token = akab-acc35t0k3nodujqunph3w7hzp7-gtm6ij
+client_token = akab-c113ntt0k3n4qtari252bfxxbsl-yvsdj
+account_key = A-CCT1234:A-CCT5432
+```
+
+> Note: it is best practice for your edgerc file to contain a `[default]` section, but it is not required.
+
+If you set up a .edgerc file and save it in the default location `~/.edgerc` (note it has no .txt file extension) and enter your credentials in the `[default]` section then you can run your commands with no parameters.
+
+```powershell
+Get-Contract
+```
+
+If you wish to use a custom edgerc file, or custom section (or both) you can use the `-EdgeRCFile` and `-Section` parameters.
+
+```powershell
+Get-Contract -EdgeRCFile /path/to/my.edgerc -Section my-other-account
+```
+
+> Note: section headers must be wrapped in square brackets in the edgerc file, but you do **not** use the brackets when specifying the section, e.g. `-Section mysection` rather than `-Section [mysection]`
+
+### Environment variables
+
+Akamai PowerShell will automatically check for specific environment variables if you do not specify a .edgerc file. If you do not specify a `-Section` parameter these are:
+
+- AKAMAI_HOST
+- AKAMAI_CLIENT_TOKEN
+- AKAMAI_ACCESS_TOKEN
+- AKAMAI_CLIENT_SECRET
+
+If you do specify a section (for example if you wish to load more than one set of credentials into environment variables) the section name is appended to AKAMAI_ in the environment variable name. For example, if your `-Section` parameter has a value of mysection PowerShell will look for:
+
+- AKAMAI_MYSECTION_HOST
+- AKAMAI_MYSECTION_CLIENT_TOKEN
+- AKAMAI_MYSECTION_ACCESS_TOKEN
+- AKAMAI_MYSECTION_CLIENT_SECRET
+
+### Account Switching
+
+If you wish to execute commands against an account other than that in which you provisioned your API client (assuming you have the access) then you must provide the account switch key in one of several ways.
+
+You can find an account switch key by running:
+
+```powershell
+Get-AccountSwitchKey -Search 'My Account'
+```
+
+Then, you have 3 options:
+1. You can add `-AccountSwitchKey <ASK>` to any Akamai PowerShell command
+2. You can add an `account_key` line to your EdgeRC file, as demonstrated above
+3. You can add a AKAMAI_ACCOUNT_KEY environment variable, but _only_ if your edgegrid credentials are also present as environment variables.
+
+### Importing Credentials
+
+It can be tiresome to include `-EdgeRCFile`, `-Section` and `-AccountSwitchKey` parameters for repeated calls if you are not using the default values. So, in Akamai PowerShell v3.0 a command was introduced to take all necessary elements and load them into environment variables, meaning you would not need to provide them with subsequent commands.
+
+For example:
+
+```powershell
+Get-EdgeGridCredentials -EdgeRCFile my.edgerc -Section other-section -AccountSwitchKey A-CCT1234:A-CCT5432
+Get-Contract
+```
+
+The first command here will load your credentials, then the second will use them without being told to do so.
+
+Be aware, however, that using this approach could lead to accidents if you forget which credentials you have loaded, so it is recommended to get into the habit of clearing the credentials at the end of a session.
+
+```powershell
+Clear-EdgeGridCredentials
+```
+
+This will set all related environment variables to $null, so subsequent API calls will use the default values.
+
+
+## Best Practices for Akamai API Credential Security
+
+1. Never share your API credentials or commit them to your Git repository.
+2. Regularly rotate your API credentials, especially if you suspect they might have been compromised.
+3. Only grant the necessary permissions to your API client.
+
+## Next Steps
+
+With your Akamai API credentials set up, you're ready to start using PowerShell to manage Akamai resources. In the next section, we'll begin configuring PowerShell to work with Akamai Property Manager and Security services.

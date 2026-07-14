@@ -1,0 +1,14 @@
+{
+  "techdocs": {
+    "title": "Akamai PowerShell Techdocs",
+    "type": "page",
+    "href": "https://techdocs.akamai.com/powershell/docs/overview",
+    "newWindow": true
+  },
+  "github": {
+    "title": "Akamai PowerShell Code Repository",
+    "type": "page",
+    "href": "https://github.com/akamai/powershell",
+    "newWindow": true
+  }
+}

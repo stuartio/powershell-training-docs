@@ -1,0 +1,30 @@
+{
+  "index": {
+    "title": "Introduction"
+  },
+  "requirements": {
+    "title": "Requirements"
+  },
+  "powershell": {
+    "title": "PowerShell"
+  },
+  "use-cases": {
+    "title": "Use Cases"
+  },
+  "helpful-links": {
+    "title": "Helpful Links"
+  },
+  "appendix": {
+    "title": "Appendix"
+  },
+  "exercises": {
+    "title": "Exercises",
+    "type": "page"
+  },
+  "contact": {
+    "title": "Contact ↗",
+    "type": "page",
+    "href": "",
+    "newWindow": true
+  }
+}

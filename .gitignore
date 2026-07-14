@@ -1,0 +1,11 @@
+.next
+node_modules
+extra
+
+.DS_Store
+
+tests/
+exercises/
+!pages/exercises
+
+*lock.json
