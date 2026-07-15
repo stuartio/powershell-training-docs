@@ -14,7 +14,7 @@ For example
 $Files = Get-ChildItem # This command returns an array of files (if more than one entry found)
 $Files[0]
 
-❯_  $Files[0] # You can access an item in the array by its index
+$Files[0] # You can access an item in the array by its index
 
     Directory: C:\code\powershell-training-docs
 
@@ -26,7 +26,7 @@ $Files[0].FullName # You can access a specific property of a given object indivi
 C:\code\powershell-training-docs\.github
 ```
 
-## modules
+## Modules
 
 PowerShell comes preinstalled with a large selection of functions, but you can also install external modules for almost anything from the PowerShell Gallery, or make your own.
 
@@ -42,4 +42,22 @@ or on later versions
 Install-PSResource SomeModule
 ```
 
-The `Install-PSResource` command is typically much faster.
+The `Install-PSResource` command is typically much faster, but is not available out of the box with the older version of PowerShell which comes preinstalled in Windows. You can install it by running
+
+```powershell
+Install-Module PowerShellGet -Force
+```
+
+> If you run `Install-Module` without a `-Scope` parameter it will attempt to install the module for all users, which requires elevated privileges. If you do not have these privileges you can install the module for your user only by running `Install-Module SomeModule -Scope CurrentUser`.
+
+## Case Sensitivity
+
+PowerShell, even when run on a case-sensitive operating system like MacOS, is case-insensitive. This means that all command names, parameters and values are case-insensitive. For example, the following commands are all equivalent:
+
+```powershell
+Get-Property -PropertyName MyProperty
+get-property -propertyname myproperty
+GET-PROPERTY -PROPERTYNAME MYPROPERTY
+```
+
+If you need to filter objects or similar using a case _sensitive_ match, this is also supported, and remember that the data you pass to APIs, such as Akamai, can be case-sensitive.

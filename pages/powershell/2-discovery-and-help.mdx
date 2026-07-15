@@ -1,0 +1,152 @@
+# Discovery & Help
+
+## Command Discovery
+
+PowerShell module designers make every effort to name their commands in such a way that you should be able to infer the name from context in a lot of cases. For example, to get one thing, or a list of those things, the command would usually be `Get-Thing` (both singular and plural operations are covered by one command, usually). If you want to create a thing, the command is usually `New-Thing`, to remove a thing it is `Remove-Thing` and so on. Still, if you cannot guess your command name, or it is something complex, PowerShell makes it very easy to find the commands you are looking for in various ways. For example, you can run the following to list every command available to you.
+
+```powershell
+Get-Command
+```
+
+The output of this will likely be enormous, so you can filter it by using wildcard matches. For example:
+
+```powershell
+Get-Command *Property*
+
+CommandType     Name                                               Version    Source
+-----------     ----                                               -------    ------
+Alias           Deploy-Property -> New-PropertyActivation          3.0.0      Akamai.Property
+Alias           Deploy-PropertyInclude -> New-PropertyIncludeActi… 3.0.0      Akamai.Property
+Alias           Disable-Property -> New-PropertyDeactivation       3.0.0      Akamai.Property
+Alias           Disable-PropertyInclude -> New-PropertyIncludeDea… 3.0.0      Akamai.Property
+Alias           Restore-Property -> Undo-PropertyActivation        3.0.0      Akamai.Property
+Alias           Restore-PropertyInclude -> Undo-PropertyIncludeAc… 3.0.0      Akamai.Property
+Alias           Set-ChinaCDNPropertyHostname ->                    3.0.0      Akamai.ChinaCDN
+Function        Add-PropertyHostname                               3.0.0      Akamai.Property
+#...etc....etc....etc...
+```
+
+This will find all commands whose name contains "Property", and as with all things in PowerShell is case-insensitive.
+
+Still, you may also wish to further filter your list by module, as well as command name, which you can do like this:
+
+```powershell
+Get-Command *Property* -Module Akamai.GTM
+
+CommandType     Name                                               Version    Source
+-----------     ----                                               -------    ------
+Function        Get-GTMLivenessPerProperty                         3.0.0      Akamai.GTM
+Function        Get-GTMProperty                                    3.0.0      Akamai.GTM
+Function        Get-GTMTrafficPerProperty                          3.0.0      Akamai.GTM
+Function        New-GTMProperty                                    3.0.0      Akamai.GTM
+Function        Remove-GTMProperty                                 3.0.0      Akamai.GTM
+Function        Set-GTMProperty                                    3.0.0      Akamai.GTM
+```
+
+## Help
+
+Once you have found the command you are looking for, you now need to figure out how to use it. PowerShell has a built-in help system which is designed to give you all the information you require to use the command, sometimes in multiple different ways.
+
+## Basic Help
+
+To start with, find a command and run Get-Help on it.
+
+```powershell
+Get-Help Get-PropertyRules
+
+NAME
+    Get-PropertyRules
+
+SYNOPSIS
+    Get a property's rule tree.
+
+SYNTAX
+    Get-PropertyRules [-PropertyVersion] <String> [-AccountSwitchKey <String>] [-ContractId <String>] [-EdgeRCFile <String>] [-Force] [-ForceSlashStyle {Windows |
+    Unix}] [-GroupID <String>] [-MaxDepth <Int32>] [-OriginalInput] [-OutputDirectory <String>] [-OutputFileName <String>] [-OutputSnippets] [-OutputToFile]
+    [-PassThru] [-PathFromMainJson] -PropertyID <String> [-RuleFormat <String>] [-Section <String>] [<CommonParameters>]
+
+    Get-PropertyRules [-PropertyName] <String> [-PropertyVersion] <String> [-AccountSwitchKey <String>] [-ContractId <String>] [-EdgeRCFile <String>] [-Force]
+    [-ForceSlashStyle {Windows | Unix}] [-GroupID <String>] [-MaxDepth <Int32>] [-OriginalInput] [-OutputDirectory <String>] [-OutputFileName <String>]
+    [-OutputSnippets] [-OutputToFile] [-PassThru] [-PathFromMainJson] [-RuleFormat <String>] [-Section <String>] [<CommonParameters>]
+
+DESCRIPTION
+    Retrieves the rules for a given property version. You can specify the rules' output as either: - A `PSCustomObject`.
+
+    - A single JSON file (with the `-OutputToFile` parameter and optionally the `-OutputFilename` parameter).
+
+    - Broken out into JSON snippets (with the `-OutputSnippets` parameter and optionally the `-OutputDirectory` parameter).
+
+    You can also specify the `-RuleFormat` to retrieve your property rules in a specific schema version. Multiple output formats can now be used in the same
+    command and are no longer mutually exclusive.
+# ...additional info here...
+```
+
+This output tells you the name of the command, its synopsis (a short description), and a more full description. It also tells you the syntax of the command, with multiple options if a command uses multiple parameter sets. This information should be enough to determine if this is the command you wish to use, and give you some generally helpful info on its use. For example, in the SYNTAX section you can see certain parameters with square brackets surrounding them, and others without. The brackets indicate that this parameter is optional, and those parameters without brackets are mandatory (required). Each parameter also specifies the datatype expected for that parameter, e.g. `<String>` or `<Int32>`.
+
+Additionally, if you see a parameter whose name is in brackets, but whose type is not, that means that the parameter can be provided without a name, though this is not always supported. For example, with this command you could run:
+
+```powershell
+Get-PropertyRules MyProperty 1
+```
+
+which would be equivalent to
+
+```powershell
+Get-PropertyRules -PropertyName MyProperty -PropertyVersion 1
+```
+
+We'll talk more about this in the Command Elements lesson.
+
+## More detailed help
+
+The `Get-Help` command has two additional parameters you can use to increase the level of output, specifically `-Detailed` and `-Full`. The `-Detailed` parameter will give you more information about the command, including a description of each parameter, and examples of how to use the command. The `-Full` parameter will give you all of that, plus any additional notes or information the module designer has included.
+
+```powershell
+Get-Help Get-PropertyRules -Detailed
+
+NAME
+    Get-PropertyRules
+
+SYNOPSIS
+    Get a property's rule tree.
+
+
+SYNTAX
+    Get-PropertyRules [-PropertyVersion] <String> [-AccountSwitchKey <String>] [-ContractId <String>] [-EdgeRCFile <String>] [-Force] [-ForceSlashStyle {Windows |
+    Unix}] [-GroupID <String>] [-MaxDepth <Int32>] [-OriginalInput] [-OutputDirectory <String>] [-OutputFileName <String>] [-OutputSnippets] [-OutputToFile]
+    [-PassThru] [-PathFromMainJson] -PropertyID <String> [-RuleFormat <String>] [-Section <String>] [<CommonParameters>]
+
+    Get-PropertyRules [-PropertyName] <String> [-PropertyVersion] <String> [-AccountSwitchKey <String>] [-ContractId <String>] [-EdgeRCFile <String>] [-Force]
+    [-ForceSlashStyle {Windows | Unix}] [-GroupID <String>] [-MaxDepth <Int32>] [-OriginalInput] [-OutputDirectory <String>] [-OutputFileName <String>]
+    [-OutputSnippets] [-OutputToFile] [-PassThru] [-PathFromMainJson] [-RuleFormat <String>] [-Section <String>] [<CommonParameters>]
+
+
+DESCRIPTION
+    Retrieves the rules for a given property version. You can specify the rules' output as either: - A `PSCustomObject`.
+
+    - A single JSON file (with the `-OutputToFile` parameter and optionally the `-OutputFilename` parameter).
+
+    - Broken out into JSON snippets (with the `-OutputSnippets` parameter and optionally the `-OutputDirectory` parameter).
+
+
+    You can also specify the `-RuleFormat` to retrieve your property rules in a specific schema version. Multiple output formats can now be used in the same
+    command and are no longer mutually exclusive.
+
+
+
+PARAMETERS
+    -AccountSwitchKey <String>
+        An account credential key that lets you move between accounts when using an API client enabled for multiple accounts. To find account switch keys, use
+        Get-AccountSwitchKey (https://techdocs.akamai.com/powershell/docs/get-accountswitchkey).
+
+    -ContractId <String>
+        Your contract's ID. The parameter is optional if a property belongs to only one contract; otherwise, you need to specify it along with the `-GroupID`.
+        This parameter is optional except for the create requests.
+
+    -EdgeRCFile <String>
+        Your EdgeGrid resource file to authenticate your command. Defaults to `~/.edgerc`.
+
+    -Force [<SwitchParameter>]
+        When enabled, overwrites a local file or files if they exist. If files exist and this is not specified, an error will be thrown.
+...etc...etc...etc...
+```
