@@ -5,8 +5,8 @@
   "requirements": {
     "title": "Requirements"
   },
-  "powershell": {
-    "title": "PowerShell"
+  "powershell-fundamentals": {
+    "title": "PowerShell Fundamentals"
   },
   "use-cases": {
     "title": "Use Cases"

@@ -1,0 +1,20 @@
+{
+  "property-manager": {
+    "title": "Property Manager"
+  },
+  "app-and-api-protector": {
+    "title": "App and API Protector"
+  },
+  "edge-dns": {
+    "title": "Edge DNS"
+  },
+  "edgeworkers": {
+    "title": "EdgeWorkers"
+  },
+  "client-network-lists": {
+    "title": "Client & Network Lists"
+  },
+  "netstorage": {
+    "title": "NetStorage"
+  }
+}
