@@ -22,5 +22,8 @@
   },
   "8-functions-and-scripts": {
     "title": "Functions and Scripts"
+  },
+  "9-error-handling": {
+    "title": "Error Handling"
   }
 }
