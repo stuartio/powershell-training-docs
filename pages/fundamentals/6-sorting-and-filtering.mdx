@@ -1,0 +1,113 @@
+# Sorting & Filtering
+
+As previously mentioned, PowerShell is based on objects, rather than strings. Where this really shines is in the case where you need to select specific elements of what is returned, and sort them for easier consumption.
+
+## Filtering
+
+Filtering in PowerShell is achieved in two ways:
+- When you have an array of objects, choosing which objects you wish to keep
+- When you have an array of objects, choosing which properties of those objects you wish to keep
+
+### Where-Object
+
+Where-object (alias `where` or `?`) is the command used to filter objects based on a condition. For example, let's say you have a list of CPS enrollments.
+
+```powershell
+$Enrollments = Get-CPSEnrollment
+```
+
+Now, we only want those enrollments which are Domain Validation. You can achieve this with a simple filter:
+
+$Enrollments | Where-Object validationType -eq 'DV'
+
+> See the [Conditional Operators](../appendix/conditional-operators) page for a full list of operators you can use in your filters.
+
+When filtering an array of objects based on a single property you can use this shorthand syntax. However, if you need to filter based on multiple properties, or a child property of your objects, you will need to use the full syntax:
+
+```powershell
+$Enrollments | Where-Object { $_.validationType -eq 'DV' -and $_.csr.cn -eq 'www.example.com' }
+```
+
+> Remember that the `$_` variable represents the current object being processed in the pipeline, so you can access any property of that object to use in your filter.
+
+### Select-Object
+
+Select-Object (alias `select`) is the command used to select specific properties of an object. For example, let's say you have a list of CPS enrollments.
+
+```powershell
+$Enrollments | Select-Object id, validationType
+
+    id validationType
+    -- --------------
+ 11111 dv
+ 22222 dv
+ 33333 dv
+ 44444 third-party
+ 55555 dv
+```
+
+This can be a great tool to cherry-pick the data you are interested in, which can be read from the shell, or even piped to `Export-CSV` and written to a CSV file.
+
+This approach works well when you are selecting top-level properties, but there are many occasions where you may wish to select something in a child object. To continue our CPS example, you might well want to know the Common Name, and the acceptable TLS versions. In this case you have can use Select-Object, but with a hashtable for the selected parameter. This hashtable must have two elements: label (alias `l`) and expression (alias `e`).
+
+> You can combine the simple and complex filter terms in a single Select-Object command
+
+```powershell
+$Enrollments | Select-Object id, @{ label ='CommonName'; expression = {$_.csr.cn} }, @{ l='DisallowedTLSVersions';e={$_.networkConfiguration.disallowedTlsVersions -Join ','}}
+
+    id  CommonName               DisallowedTLSVersions
+    --  ----------               ---------------------
+ 11111  a.example.com            TLSv1,TLSv1_3
+ 22222  b.example.com            TLSv1,TLSv1_1
+ 33333  c.example.com
+ 44444  d.example.com            TLSv1,TLSv1_1
+ 55555  e.example.com            None
+```
+
+## Sorting
+
+Sorting objects is another essential element in getting your PowerShell data into the desired format. `Sort-Object` (alias `sort`) can sort both arrays of simple objects, like strings or integers, and arrays of complex objects.
+
+
+### Simple Sorting
+
+```powershell
+1,3,5,2,4 | Sort-Object
+
+1
+2
+3
+4
+5
+```
+
+```powershell
+'apple','banana','cherry','date' | Sort-Object -Descending
+
+date
+cherry
+banana
+apple
+```
+
+### Sorting by Property
+
+You can sort objects by a given property, and even sort by multiple properties. For example, let's say you have a list of CPS enrollments.
+
+```powershell
+$Enrollments | Sort-Object -property id
+```
+
+Then let's say you want to sort by validation type, and then by ID. You can do this by passing an array of properties to the `-property` parameter.
+
+```powershell
+$Enrollments | Sort-Object -property validationType, id
+```
+
+### Sorting by Expression
+
+You can also use `Sort-Object` in the same advanced format as you would use `Select-Object`, except you don't need the `label` element. For example, let's say you wanted to sort CPS enrollments by Common Name.
+
+```powershell
+$Enrollments | Sort-Object -property @{ expression = {$_.csr.cn} }
+```

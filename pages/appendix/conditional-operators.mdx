@@ -1,0 +1,51 @@
+# Conditional Operators
+
+## Comparison Operators
+
+| Operator | Case-Insensitive | Case-Sensitive | Description | Example |
+|----------|-----------------|----------------|-------------|---------|
+| `-eq` | `-eq` | `-ceq` | Equal to | `$a -eq $b` |
+| `-ne` | `-ne` | `-cne` | Not equal to | `$a -ne $b` |
+| `-gt` | `-gt` | `-cgt` | Greater than | `$a -gt $b` |
+| `-ge` | `-ge` | `-cge` | Greater than or equal to | `$a -ge $b` |
+| `-lt` | `-lt` | `-clt` | Less than | `$a -lt $b` |
+| `-le` | `-le` | `-cle` | Less than or equal to | `$a -le $b` |
+| `-like` | `-like` | `-clike` | Wildcard string match (`*`, `?`) | `"hello" -like "hel*"` |
+| `-notlike` | `-notlike` | `-cnotlike` | Wildcard string does not match | `"hello" -notlike "bye*"` |
+| `-match` | `-match` | `-cmatch` | Regex match | `"hello" -match "^hel"` |
+| `-notmatch` | `-notmatch` | `-cnotmatch` | Regex does not match | `"hello" -notmatch "^bye"` |
+| `-contains` | `-contains` | `-ccontains` | Collection contains value | `@(1,2,3) -contains 2` |
+| `-notcontains` | `-notcontains` | `-cnotcontains` | Collection does not contain value | `@(1,2,3) -notcontains 5` |
+| `-in` | `-in` | `-cin` | Value is in collection | `2 -in @(1,2,3)` |
+| `-notin` | `-notin` | `-cnotin` | Value is not in collection | `5 -notin @(1,2,3)` |
+
+## Logical Operators
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `-and` | Both conditions must be true | `$a -gt 0 -and $b -gt 0` |
+| `-or` | At least one condition must be true | `$a -gt 0 -or $b -gt 0` |
+| `-not` | Negates a condition | `-not $a` |
+| `!` | Negates a condition (alias for `-not`) | `!$a` |
+| `-xor` | Exactly one condition must be true | `$a -xor $b` |
+
+## Type Operators
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `-is` | Object is of specified type | `$a -is [int]` |
+| `-isnot` | Object is not of specified type | `$a -isnot [string]` |
+| `-as` | Converts object to specified type | `$a -as [int]` |
+
+## Bitwise Operators
+
+| Operator | Description | Example |
+|----------|-------------|---------|
+| `-band` | Bitwise AND | `0b1100 -band 0b1010` → `8` |
+| `-bor` | Bitwise OR | `0b1100 -bor 0b1010` → `14` |
+| `-bxor` | Bitwise XOR | `0b1100 -bxor 0b1010` → `6` |
+| `-bnot` | Bitwise NOT | `-bnot 0b1111` |
+| `-shl` | Shift bits left | `1 -shl 3` → `8` |
+| `-shr` | Shift bits right | `8 -shr 3` → `1` |
+
+> **Note:** String comparisons using operators without a `c` prefix (e.g., `-eq`, `-like`, `-match`) are **case-insensitive** by default. Prefix with `i` (e.g., `-ieq`) to make the case-insensitivity explicit.

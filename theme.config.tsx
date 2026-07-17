@@ -1,4 +1,5 @@
 import React from "react";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { DocsThemeConfig } from "nextra-theme-docs";
 
 const config: DocsThemeConfig = {
@@ -58,7 +59,12 @@ const config: DocsThemeConfig = {
   },
   docsRepositoryBase: 'https://github.com/stuartio/powershell-training-docs',
   footer: {
-    text: '2026 Advanced Solutions Team - Akamai Technical Documentation'
+    text: (
+      <>
+        2026 Advanced Solutions Team - Akamai Technical Documentation
+        <SpeedInsights />
+      </>
+    )
   }
 };
 

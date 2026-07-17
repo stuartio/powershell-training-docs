@@ -1,1 +1,70 @@
 ## The Pipeline
+
+One of PowerShell's most powerful features is the ability to pipe the output of one command into another command. This allows you to build complex operations by combining simple commands together.
+
+Piping takes two forms:
+1. A simple value, like a string or integer, is piped from one command to another
+2. A complex object, like a hashtable or custom object, is piped from one command to another, and its properties are extracted and assigned to the relevant parameters.
+
+## Simple Piping
+
+For example, if you wanted to list all files in a directory you can run:
+
+```powershell
+Get-ChildItem -Path MyDirectory
+```
+
+If you then wanted to deleted all of these files, you could run:
+
+```powershell
+Get-ChildItem -Path MyDirectory | Remove-Item
+```
+
+> Typically, commands which accept piped input which receive more than one object will process them in a loop, so the above command will delete all files in the directory one at a time.
+
+## More Complex Piping
+
+Let's take a more complex example using Akamai. In this example we retrieve aan AAP Rate Policy, tweak something, then update it.
+
+```powershell
+$RP = Get-AppSecRatePolicy -ConfigName MyConfig -Version latest -RatePolicyID 12345
+```
+
+This command pulls the rate policy into a variable called `$RP`. We can then update the object and pipe it back.
+
+```powershell
+$RP.fileExtensions.values += 'js'
+$RP | Set-AppSecRatePolicy -ConfigName MyConfig -Version latest
+```
+
+Notice, in the above example that we didn't specify the RatePolicyID when we called `Set-AppSecRate`. This is because the command accepts piped input, and due to the parameter setup, the rate policy ID extracted from the piped object.
+
+Let's see that in the help docs:
+
+```shell
+Get-Help Set-AppSecRatePolicy -Parameter RatePolicyID
+
+-RatePolicyID <Int32>
+    Your rate policy's ID.
+
+    Required?                    true
+    Position?                    named
+    Default value                None
+    Accept pipeline input?       True (ByPropertyName)
+    Aliases                      id
+    Accept wildcard characters?  false
+```
+
+The element you are looking for is `Accept pipeline input? True (ByPropertyName)`. This means that if you pipe an object into the command, and that object has a property called `RatePolicyID`, it will be extracted and used as the parameter value. This is _in addition to_ the piped `$RP` object being bound to the `-Body` parameter which looks like this:
+
+```shell
+-Body <Object>
+    The request body, either as a `PSCustomObject` or a string. This parameter supports pipelining.
+
+    Required?                    true
+    Position?                    named
+    Default value                None
+    Accept pipeline input?       True (ByValue)
+    Aliases                      none
+    Accept wildcard characters?  false
+```

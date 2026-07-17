@@ -2,6 +2,7 @@
 
 All PowerShell commands and scripts have access to a wealth of variables which you can use in your own scripts. Here are some of the most notable ones
 
+- `$_` - This variable can have multiple uses: in a Foreach-Object loop it represents the current object being process. In a pipeline scenario, e.g. `Where-Object`, it is the piped object. In a `catch` block folling a `try` block, it is the error object which was thrown. In a `switch` statement, it is the current value being evaluated.
 - `$env:<Var Name>` - All environment variables in your shell session can be read from and written to using this prefix, e.g. `$env:PATH`. Just be aware that any changes you make to environment variables are not permanent, and are only available in this exact shell. if you are running another instance of PowerShell, say in another tab, then the data is not shared.
 - `$PSVersionTable` - This variable contains a table of information about the version of PowerShell you are running, including the version number, edition, and build number. You can use this variable to check the version of PowerShell you are running, and to ensure that your scripts are compatible with that version.
 - `$PSScriptRoot` - This variable contains the full path to the directory where the script is located. This is useful for scripts that need to reference files in the same directory as the script, or for scripts that need to be run from different locations. Note: this is only available in scripts, and not in the interactive shell.
