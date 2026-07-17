@@ -5,8 +5,11 @@
   "requirements": {
     "title": "Requirements"
   },
-  "powershell-fundamentals": {
-    "title": "PowerShell Fundamentals"
+  "fundamentals": {
+    "title": "Fundamentals"
+  },
+  "working-with-akamai": {
+    "title": "Working with Akamai"
   },
   "use-cases": {
     "title": "Use Cases"

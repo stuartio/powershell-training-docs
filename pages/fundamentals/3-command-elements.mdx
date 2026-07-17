@@ -1,0 +1,148 @@
+# Command Elements
+
+PowerShell uses various command elements to help you work more efficiently. These are typically quite simple individually, but combine to make your work a lot faster.
+
+## Module Auto-Loading
+
+PowerShell maintains a list of all commands in all modules installed in paths covered by the PSModulePath environment variable. Then, when you type part of a command name, PowerShell will automatically load the module containing that command for you. This is called "module auto-loading". For example, if you type `Get-PropertyRules`, PowerShell will automatically load the Akamai.Property module for you, allowing you to use the auto-complete feature for the command parameters.
+
+This means that you never have to explcitly load a module in order to use its commands, as you do in Python for example, unless you are loading a module from outside the PSModulePath.
+
+```powershell
+$env:PSModulePath
+
+C:\Users\smacleod\Documents\PowerShell\Modules;C:\Program Files\PowerShell\Modules;c:\program files\powershell\7\Modules;C:\Program Files\WindowsPowerShell\Modules;C:\windows\system32\WindowsPowerShell\v1.0\Modules;c:\code\powershell\dist;c:\code\modules;c:\code\cloud-powershell\src\
+```
+
+## Tab-Completion
+
+When working with PowerShell, it is good practice to always attempt tab-completion, as it will usually save you a lot of typing. For example, if you want to run the `Get-PropertyRules` command, you can type `Get-Prop` and then hit the tab key. PowerShell will automatically complete the command name for you. If there are multiple commands that match what you have typed, hitting tab again will cycle through the available options.
+
+This is also true with parameters. For example, if you type `Get-PropertyRules -` and then hit tab, PowerShell will cycle through the available parameters for that command. The style with which this is done differs on Windows and Unix platforms. On Windows, PowerShell will tab through all the defined parameters one at a time, in the order in which they have been defined. On Unix platforms, PowerShell will display a list of all available parameters (which includes built-in parameters and can be quite long), and you can then type part of the parameter name and hit tab again to complete it.
+
+Windows
+```powershell
+Get-PropertyRules -
+Get-PropertyRules -PropertyName
+```
+
+Unix
+```powershell
+❯_  Get-PropertyRules -
+PropertyName         OutputToFile         Force                ErrorAction          OutVariable
+PropertyID           OutputFileName       PassThru             WarningAction        OutBuffer
+PropertyVersion      OutputSnippets       EdgeRCFile           InformationAction    PipelineVariable
+GroupID              OutputDirectory      Section              ProgressAction
+ContractId           MaxDepth             AccountSwitchKey     ErrorVariable
+RuleFormat           ForceSlashStyle      Verbose              WarningVariable
+OriginalInput        PathFromMainJson     Debug                InformationVariable
+```
+
+Which you prefer is up to you, though you can change the behavior on Unix platforms to match that of Windows if you prefer by running:
+
+```powershell
+Set-PSReadLineKeyHandler -Key Tab -Function TabCompleteNext
+Set-PSReadLineKeyHandler -Key Shift+Tab -Function TabCompletePrevious
+```
+
+## Singular vs Plural Commands
+
+PowerShell typically combines the "list all" and "get one" commands into a single command. For example, the `Get-GTMDomain` command can be used to list all GTM domains, or retrieve a single domain by its domain name. This is commonly done by using the singular form of the noun.
+
+> In version 1 of the Akamai Modules we did have `List-*` commands, though these were all removed in version 2. If you find a script using these you should update it to the latest version of the module.
+
+_Get All_
+```powershell
+$Domains = Get-GTMDomain
+```
+
+_Get One_
+```powershell
+$Domain = Get-GTMDomain -DomainName "example.com"
+```
+
+## To quote, or not to quote
+
+When providing parameters on the command line, PowerShell will automatically convert the parameter to the data type expected by the parameter. For instance, if a parameter expects an integer, and you provide a string, PowerShell will attempt to convert the string to an integer. This means that you do not need to quote parameters unless they contain spaces or special characters. For example, the following two commands are equivalent:
+
+```powershell
+$Domain = Get-GTMDomain -DomainName 'example.com'
+$Domain = Get-GTMDomain -DomainName example.com
+```
+
+If your string contains any spaces or special characters, you will need to quote it. For example, the following commands will fail:
+
+```powershell
+$Domain = Get-GTMDomain -DomainName example.com with spaces
+$Domain = Get-GTMDomain -DomainName example.com,with,commas
+```
+
+> Whether you use single or double quotes is largely up to you, except for one circumstance. PowerShell supports both single and double quotes, but if your string contains a variable, you must use double quotes. For example, if you had a variable `$Name` with the value of 'Bob', the running `"My name is $Name"` would return `My name is Bob`, while `'My name is $Name'` would return literally `My name is $Name`.
+
+There is a special case for commas for any parameter which uses an array type. For example, if you run `Get-Help Deploy-Property -Detailed`, you will see the following:
+
+```shell
+-NotifyEmails <String[]>
+    One or more email addresses to notify when the activation status changes.
+```
+
+This denotes that there is a parameter named NotifyEmails which is an array of strings. If you want to provide multiple email addresses, you can do so by separating them with commas, and each entry is its own string, which you can quote or note, depending on the value.
+
+For example:
+
+```powershell
+Deploy-Property -NotifyEmails "user1@example.com", user2@example.com
+```
+
+You do not need to be consistent with quoting in this instance, each entry is independent.
+
+## Named vs Positional Parameters
+
+Typically, PowerShell function parameters are named, e.g. they have a -Name and a value
+
+```powershell
+Get-Thing -ParameterName ParameterValue
+```
+
+However, lots of commands, especially the built-in ones also support positional parameters, which means you can provide the parameter value without specifying the parameter name. For example, the `Get-GTMDomain` command has a parameter named `-DomainName`, which is also the first positional parameter. This means you can run either of the following commands:
+
+```powershell
+Get-GTMDomain -DomainName "example.com"
+Get-GTMDomain "example.com"
+```
+
+You can also have multiple positional parameters, and you can provide them in order without specifying the parameter name. For example, the `Get-PropertyRules` command has two positional parameters, `-PropertyName` and `-PropertyVersion`. This means you can run either of the following commands:
+
+```powershell
+Get-PropertyRules -PropertyName "example.com" -PropertyVersion 1
+Get-PropertyRules "example.com" 1
+```
+
+You can tell if a parameter supports positionality by running `Get-Help` on the command and looking at the SYNTAX section. If a parameter is positional, its parameter name will be wrapped in square brackets, e.g. `[-PropertyName] <String>`. If it is not positional, the parameter name will not be wrapped in square brackets, e.g. `-PropertyVersion <String>`.
+
+```shell
+❯_  Get-Help Get-PropertyRules
+
+NAME
+    Get-PropertyRules
+
+SYNOPSIS
+    Get a property's rule tree.
+
+SYNTAX
+    Get-PropertyRules [-PropertyVersion] <String> [-AccountSwitchKey <String>] [-ContractId <String>] [-EdgeRCFile
+    <String>] [-Force] [-ForceSlashStyle {Windows | Unix}] [-GroupID <String>] [-MaxDepth <Int32>] [-OriginalInput]
+    [-OutputDirectory <String>] [-OutputFileName <String>] [-OutputSnippets] [-OutputToFile] [-PassThru]
+    [-PathFromMainJson] -PropertyID <String> [-RuleFormat <String>] [-Section <String>] [<CommonParameters>]
+
+    Get-PropertyRules [-PropertyName] <String> [-PropertyVersion] <String> [-AccountSwitchKey <String>] [-ContractId
+    <String>] [-EdgeRCFile <String>] [-Force] [-ForceSlashStyle {Windows | Unix}] [-GroupID <String>] [-MaxDepth
+    <Int32>] [-OriginalInput] [-OutputDirectory <String>] [-OutputFileName <String>] [-OutputSnippets] [-OutputToFile]
+    [-PassThru] [-PathFromMainJson] [-RuleFormat <String>] [-Section <String>] [<CommonParameters>]
+```
+
+If you look at the 2nd entry in SYNTAX you can see this as example with `[-PropertyName] <String>` and `[-PropertyVersion] <String>`. The square brackets around the parameter name indicate that it is positional, while the lack of square brackets around the parameter name for `-PropertyID` indicates that it is not positional.
+
+> If you have an optional parameter which is positional (which is less common), then the whole parameter entry will be wrapped in square brackets as well as the name, e.g. `[[-OptionalPositionalParameter] <String>]`
+
+The thing to be aware of with positional parameters is that you must provide them in the order they are defined. For example, if you run `Get-PropertyRules 1 "example.com"`, PowerShell will attempt to use `1` as the value for `-PropertyName`, and `"example.com"` as the value for `-PropertyVersion`, which is not what you want. You can avoid this by always using named parameters, which is a good practice in general.

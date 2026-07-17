@@ -1,0 +1,37 @@
+# Built-In Variables
+
+All PowerShell commands and scripts have access to a wealth of variables which you can use in your own scripts. Here are some of the most notable ones
+
+- `$env:<Var Name>` - All environment variables in your shell session can be read from and written to using this prefix, e.g. `$env:PATH`. Just be aware that any changes you make to environment variables are not permanent, and are only available in this exact shell. if you are running another instance of PowerShell, say in another tab, then the data is not shared.
+- `$PSVersionTable` - This variable contains a table of information about the version of PowerShell you are running, including the version number, edition, and build number. You can use this variable to check the version of PowerShell you are running, and to ensure that your scripts are compatible with that version.
+- `$PSScriptRoot` - This variable contains the full path to the directory where the script is located. This is useful for scripts that need to reference files in the same directory as the script, or for scripts that need to be run from different locations. Note: this is only available in scripts, and not in the interactive shell.
+- `$Error` - This variable contains the most recent error that occurred in the current session. You can use this variable to check for errors in your scripts, and to handle them appropriately.
+- `$Error[1]` - The second-most recent error. Errors are added to this array in a stack-like manner, so the most recent error is always at index 0, the second-most recent error is at index 1, and so on.
+- `$IsWindows` - If the shell is running on Windows
+- `$IsLinux` - If the shell is running on Linux
+- `$IsMacOS` - If the shell is running on macOS
+- `$HOME` - The home directory for the current user. This is typically `C:\Users\<username>` on Windows, `/home/<username>` on Linux, and `/Users/<username>` on macOS.
+- `$ErrorActionPreference` - This variable controls how PowerShell handles errors. The default value is `Continue`, which means that PowerShell will continue executing the script even if an error occurs. You can change this value to `Stop`, which will cause PowerShell to stop executing the script when an error occurs, or to `SilentlyContinue`, which will suppress error messages and continue executing the script.
+- `$DebugPreference` - This variable controls how PowerShell handles debugging. The default value is `Continue`, which means that PowerShell will continue executing the script even if a debug message is generated. You can change this value to `Stop`, which will cause PowerShell to stop executing the script when a debug message is generated, or to `SilentlyContinue`, which will suppress debug messages and continue executing the script.
+- `$WarningPreference` - As `$DebugPreference`, but for warnings.
+- `$VerbosePreference` - As `$DebugPreference`, but for verbose messages.
+
+If you want to see a full list of variables available in your session you can run:
+
+```powershell
+Get-ChildItem Variable:/
+
+Name                           Value
+----                           -----
+?                              True
+^
+$
+args                           {}
+ConfirmPreference              High
+DebugPreference                SilentlyContinue
+EnabledExperimentalFeatures    {}
+Error                          {}
+ErrorActionPreference          Continue
+ErrorView                      ConciseView
+...etc...etc...
+```
