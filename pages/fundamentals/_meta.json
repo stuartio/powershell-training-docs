@@ -11,8 +11,8 @@
   "4-pipeline": {
     "title": "The Pipeline"
   },
-  "5-built-in-variables": {
-    "title": "Built-in Variables"
+  "5-communicating-to-the-shell": {
+    "title": "Communicating to the Shell"
   },
   "6-sorting-and-filtering": {
     "title": "Sorting and Filtering"

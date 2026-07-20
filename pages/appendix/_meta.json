@@ -4,5 +4,11 @@
   },
   "conditional-operators": {
     "title": "Conditional Operators"
+  },
+  "built-in-variables": {
+    "title": "Built-in Variables"
+  },
+  "formatting-text": {
+    "title": "Formatting Text"
   }
 }

@@ -1,0 +1,125 @@
+# Formatting Text
+
+If you were to run something simple like
+
+```powershell
+Write-Host 'Hello World'
+```
+
+then there really isn't a whole lot more you need to worry about. However, it is very common to want to include variable data in your output, or to format it in a few different ways. This can be done in several ways, here is a brief overview.
+
+## Inline variable expansion
+
+You can include variables directly in your output string, and PowerShell will automatically expand them to their values. However, this works differently if you wish to use string or integer variables, or if your variable is instead the property of an object or result of a function.
+
+```powershell
+$Name = 'Inigo Montoya'
+Write-Host "Hello, my name is $Name"
+
+Hello, my name is Inigo Montoya
+```
+
+Because `$Name` is a string, we can expand it in place, so long as the string is enclosed in double quotes. If we were to use single quotes, the variable would not be expanded, and the output would be:
+
+```
+Hello, my name is $Name
+```
+
+This also works perfectly well for multiple variables.
+
+```powershell
+$Name = 'Inigo Montoya'
+$TerribleCrime = 'killed my father'
+
+Write-Host "Hello, my name is $Name, you $TerribleCrime, prepare to die!"
+
+Hello, my name is Inigo Montoya, you killed my father, prepare to die!
+```
+
+## Using object properties
+
+If you wish to output a property of an object, i.e. not the whole object, then you must enclose the variable inside an expression block, which is done using `$()`.
+
+```powershell
+$Character = [PSCustomObject] @{
+    Name = 'Inigo Montoya'
+    TerribleCrime = 'killed my father'
+    PrepareTo = 'die!'
+}
+
+Write-Host "Hello, my name is $($Character.Name), you $($Character.TerribleCrime), prepare to $($Character.PrepareTo)"
+
+Hello, my name is Inigo Montoya, you killed my father, prepare to die!
+```
+
+This can also be used to output the result of a function, or any other expression.
+
+```powershell
+Write-Host "At the tone, the time will be $(Get-Date -Format 'HH:mm:ss')"
+```
+
+## Using the -f operator
+
+This method will be familiar to Python users, as it is very similar to the `str.format()` method. The `-f` operator allows you to format strings using placeholders, which are replaced by the values of variables or expressions.
+
+```powershell
+$Message = "Hello, my name is {0}, you {1}, prepare to {2}" -f 'Inigo Montoya', 'killed my father', 'die!'
+Write-Host Message
+```
+
+One thing to note here, is that you cannot perform the formatting after the string is used as the argument to `Write-Host`, unless you enclose the whole string in parentheses. For example, this will not work:
+
+```powershell
+Write-Host "Hello, my name is {0}, you {1}, prepare to {2}" -f 'Inigo Montoya', 'killed my father', 'die!'
+```
+
+But this will
+
+```powershell
+Write-Host ("Hello, my name is {0}, you {1}, prepare to {2}" -f 'Inigo Montoya', 'killed my father', 'die!')
+```
+
+This is because the value passed to Write-Host must be calculated before it is passed, and the `-f` operator is not evaluated until after the string is passed to Write-Host. By enclosing the whole string in parentheses, we force PowerShell to evaluate the string first, and then pass the result to `Write-Host`.
+
+## Here-Strings
+
+PowerShell allows you to create multi-line strings using a special syntax called a "here-string". A here-string is created by enclosing the string in `@"` and `"@` (for double-quoted here-strings) or `@'` and `'@` (for single-quoted here-strings). Here-strings are useful for creating large blocks of text, such as HTML or JSON, without having to worry about escaping quotes or newlines.
+
+```powershell
+$Message = @'
+Hello, my name is Inigo Montoya,
+you killed my father,
+prepare to die!
+'@
+Write-Host $Message
+```
+
+> Whether you use single or double quotes for your here-string depends on whether you want to allow variable expansion. Double-quoted here-strings will expand variables, while single-quoted here-strings will not, just as in regular strings. It is best practice to use single-quoted strings unless you specifically need variable expansion.
+
+One thing to be aware of with here-strings is that the formatting of the string is strictly enforced, i.e. your string must begin at the start of the line following the declaration (`'@` or `@"`), and cannot be indented. Similarly, the closing delimiter must also be at the start of a line, and cannot be indented. If you do not follow this formatting, PowerShell will throw an error. This is usually not an issue in the shell, where indentation is not really used, but when writing a script this can look a little odd. For example, this will throw an error, even though you would expect indentation when writing from within a function:
+
+```powershell
+function Get-Revenge {
+    $Message = @'
+    Hello, my name is Inigo Montoya,
+    you killed my father,
+    prepare to die!
+    '@
+
+    Write-Host $Message
+}
+```
+
+The correct format would be:
+
+```powershell
+function Get-Revenge {
+    $Message = @'
+Hello, my name is Inigo Montoya,
+you killed my father,
+prepare to die!
+'@
+
+    Write-Host $Message
+}
+```

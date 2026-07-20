@@ -1,0 +1,62 @@
+# Communicating to the Shell
+
+Communicating with the shell is an essential part of using PowerShell effectively. You can send output to the shell using cmdlets like `Write-Host`, `Write-Output`, and `Write-Error`.
+
+The main thing to understand is that PowerShell has multiple output streams, each of which can be used to send different types of information to the shell. The most common output streams are:
+
+- `Write-Host` - Display information directly to the console. Also supports coloured outputs using `-ForegroundColor` and `-BackgroundColor` parameters. Note that this output is not captured by the pipeline, so it only really suitable for printing to the shell.
+- `Write-Output` - Sends objects down the pipeline, which can be captured or further processed. If the pipeline is not being used, the output will be displayed in the console in the same way as `Write-Host`.
+- `Write-Error` - Writes error messages to the error stream.
+- `Write-Warning` - Writes warning messages to the warning stream, which can be enabled or disabled using the `$WarningPreference` variable.
+- `Write-Verbose` - Writes verbose messages to the verbose stream, which can be enabled or disabled using the `$VerbosePreference` variable.
+
+## Writing multi-line strings
+
+If you wish to write multi-line strings, you can do it in several ways. The simplest is to insert the newline character `n` into your string, which will create a new line in the output.
+
+```powershell
+Write-Host "This is the first line.`nThis is the second line."
+
+This is the first line.
+This is the second line.
+```
+
+> Note: Special characters like `n` (newline), `t` (tab), etc. only work in double-quoted strings. If you use single quotes, the characters will be treated as literal text and will not be interpreted.
+
+Alternatively, you could simply use multiple `Write-Host` statements, which will each output a new line.
+
+```powershell
+Write-Host "This is the first line."
+Write-Host "This is the second line."
+
+This is the first line.
+This is the second line.
+```
+
+> Write-Host will add a newline character after each output, so you don't need to add one yourself. If you want to avoid this, you can use the `-NoNewline` parameter.
+
+## Writing strings with multiple colours
+
+`Write-Host` allows you to write coloured strings, with a small number of different foreground and background colours. Unfortunately, `Write-Host` does not support multiple colours in a single string, so you will need to use multiple `Write-Host` statements to achieve this, combined with the `-NoNewline` parameter to avoid adding a newline after each statement.
+
+```powershell
+Write-Host "Hello, my name is " -NoNewline
+Write-Host "Inigo Montoya" -ForegroundColor Green -NoNewline
+Write-Host ", you " -NoNewline
+Write-Host "killed my father" -ForegroundColor Yellow -NoNewline
+Write-Host ", prepare to " -NoNewline
+Write-Host "die!" -ForegroundColor Red
+
+This is, as you can see, not an especially pleasant experience, but does not require a user to install any additional modules. If you are looking for something simpler you can use the `WriteColour` (or `WriteColor` if you are so inclined) module, which allows you to write a single string with multiple colours, and is available from the PowerShell Gallery. You can install it using:
+
+```powershell
+Install-Module -Name WriteColour
+```
+
+Then you can recreate the above statement like this
+
+```powershell
+Write-ColourHost "Hello, my name is |-red-|Inigo Montoya|-!-|, you |-yellow-|killed my father|-!-|, prepare to |-red-|die!|-!-|"
+```
+
+This module also supports many (many) more colours, including specifying RGB values or HTML colours, as well as italics, bold, and even flashing text.

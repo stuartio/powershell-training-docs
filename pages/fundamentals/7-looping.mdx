@@ -1,0 +1,64 @@
+# Looping
+
+Looping is one of PowerShell's most powerful features, especially when you learn how easy it is to loop through items directly in the shell based on the output of a previous command. First, we need to take you through the various forms of loops so you can understand which one might best fit your use case.
+
+## foreach($x in $y)
+
+This is probably the simplest form of looping in PowerShell, and will be familiar to any users who have written loops in Python. In this case we take any array variable and perform some kind of action on each item in turn.
+
+```powershell
+$Properties = Get-Property -GroupID 12345 -ContractID 1-2AB34C:1-2RBL
+foreach($Property in $Properties) {
+    Write-Host $Property.Name
+}
+```
+
+In this case, notice we use $Property to represent the current item in the loop, but it did not need to exist before the loop. One thing to be wary of is not choosing variables in your `foreach` which do already exist, as this will overwrite the value of that variable. For example, if we had a variable called `$Property` before the loop, it would be overwritten by the first item in the `$Properties` array, and then overwritten again by each subsequent item in the array, and finally take the value of the last item in the array. This is not a problem if you are aware of it, but can be a source of confusion if you are not.
+
+> Note: Looping like this is not suitable for updating items in an array directly, as the `$Property` variable is a copy of the item in the array, and not a reference to it. If you want to update items in an array, you will need to use a `for` loop instead.
+
+## For
+
+PowerShell is based on C# .net, which is in itself based on C. This means that PowerShell supports the `for` loop, which is a very common looping construct in many older programming languages. The `for` loop is useful when you want to loop through an array and update the items in the array directly, or when you want to loop through a range of numbers.
+
+```powershell
+for($i = 0; $i -lt $Properties.Count; $i++) {
+    Write-Host $Properties[$i].Name
+}
+```
+
+The structure of the definition is made up of 3 elements:
+
+- The first element initializes the iterator, which is commonly called `$i`, but can have any name. It is also common to set it to 0, but there are many use cases where you might want to start it at a different number.
+- The second element is the condition which is checked before each iteration of the loop. If the condition evaluates to `$true`, then the loop will continue, otherwise it will exit. In this case we are checking that the iterator is less than the number of items in the array, which is a common use case.
+- The third element is the increment, which is executed after each iteration of the loop. In this case we are incrementing the iterator by 1, but there are many use cases where you might want to increment it by a different number, or even decrement it.
+
+> Remember that $i in an old-style for loop is the iterator, so an integer, _not_ the item itself in the array. If you want to get the item value, you need to use `$Properties[$i]`, which will give you the item at index `$i`.
+
+## Foreach-Object
+
+This is not so much of a loop as a command you can pipe arrays to, which will then iterare through them. This can be very useful when you want to perform an action on the output of a command, without having to store it in a variable first. For example, if we wanted to write the names of all properties in a group to the console, we could do it like this:
+
+```powershell
+Get-Property -GroupID 12345 -ContractID 1-2AB34C:1-2RBL | Foreach-Object {
+    Write-Host $_.Name
+}
+```
+
+In this case, the `$_` variable represents the current item in the loop, and is automatically created by PowerShell.
+
+## Foreach-Object -Parallel
+
+As of PowerShell 7, `Foreach-Object` now has a parallelism feature, which makes it really easy to loop through array items in parallel, which can make a huge improvement to script runtime. This essentially creates a new PowerShell process based on the `-ThrottleLimit` parameter, and runs the script block in that process. This can be extremely useful, but requires some care when running.
+
+- It takes time and CPU power to create a new process, so the -Parallel feature only really makes sense when each iteration would take enough time to justify the overhead of creating a new process. If each iteration is very quick, then the overhead of creating a new process will actually make the script run slower.
+- The `-ThrottleLimit` parameter controls how many processes are created at once, and can be used to limit the number of processes created. The default is 5, but you can set it to any number you like. If you set it to 1, then the script will run in a single process, which is the same as not using the -Parallel feature at all. Best practice is to set the `-ThrottleLimit` to the number of processors or threads on your machine.
+- As each process runs separately modules and functions must be available to each process. This typically means re-importing external modules, or defining functions _inside_ the foreach-object script block.
+- Variables from the parent process must be prefixed with the `$using:` scope modifier, otherwise they will not be available in the child process. For example, if you have a variable called `$GroupID` in the parent process, you would need to use `$using:GroupID` in the child process to access it.
+
+```powershell
+$AccountSwitchKey = '1-2AB34C:1-2RBL'
+Get-Property -GroupID 12345 -ContractID 1-2AB34C:1-2RBL -AccountSwitchKey  $AccountSwitchKey | Foreach-Object -Parallel {
+    Get-PropertyRules -PropertyID $_.ID -AccountSwitchKey $using:AccountSwitchKey -OutputFile "$($_.Name).json"
+}
+```
