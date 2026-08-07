@@ -1,0 +1,81 @@
+# Functions & Scripts
+
+Functions and scripts in PowerShell, as in all languages, are an essential element of programming. They allow you to encapsulate logic and reuse it in multiple places, and they allow you to break up your code into smaller, more manageable pieces.
+
+## Functions
+
+Declaring a function in PowerShell is very simple, and can be done in one of two ways.
+
+Simple functions look a lot like Python functions, where the function is declared and its parameters are included in parentheses, without type data or other information.
+
+For example:
+
+```powershell
+function Get-Name ($FirstName, $LastName) {
+    return "$FirstName $LastName"
+}
+```
+
+This defines a function with 2 inputs, but the function does not know what type of data to expect, and it does not know if the parameters are required or optional.
+
+A more complex example would be:
+
+```powershell
+function Get-Name {
+    param (
+        [Parameter(Mandatory)]
+        [string]
+        $FirstName,
+
+        [Parameter(Mandatory)]
+        [string]
+        $LastName
+    )
+
+    return "$FirstName $LastName"
+}
+```
+
+This function definition tells us that both `$FirstName` and `$LastName` are required parameters, and that they must be strings (or will be cast to strings). If you attempt to call this function without providing both parameters PowerShell will prompt you for any which are missing.
+
+> The advanced parameter block has much, much more complexity than is shown here. See the [Advanced Parameters](../appendices/advanced-parameters.mdx) appendix for more information.
+
+> Whether you use simple parameters or advanced is largely up to you, though Advanced Parameters gives much more control and feedback to the user, so it is recommended.
+
+In either case, functions are called by their name, with parameters provided as named or positional parameters, just like any other command. Note that this is **NOT** the same syntax as you might find in other languages, even if you define your function with simple parameters. For example, to call the above function you would run:
+
+```powershell
+Get-Name -FirstName "Inigo" -LastName "Montoya"
+```
+
+You would NOT call it like this:
+
+```powershell
+Get-Name("Inigo", "Montoya")
+```
+
+## Scripts
+
+Scripts in PowerShell are really just unnamed functions, and behave the same way. For example, the following script is equivalent to the function above:
+
+```powershell
+param (
+    [Parameter(Mandatory)]
+    [string]
+    $FirstName,
+
+    [Parameter(Mandatory)]
+    [string]
+    $LastName
+)
+
+return "$FirstName $LastName"
+```
+
+Which you would run by simply calling the file's name at the shell, like this
+
+```shell
+./Get-Name.ps1 -FirstName "Inigo" -LastName "Montoya"
+```
+
+Scripts need no special formatting whatsoever, and can be as simple as a bunch of commands you ran in your shell copied and pasted into a file with the `.ps1` extension. If your script requires parameters, you can define them in the same way as a function, using the `param` block at the top of the script.
