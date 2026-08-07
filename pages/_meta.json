@@ -11,23 +11,17 @@
   "working-with-akamai": {
     "title": "Working with Akamai"
   },
-  "use-cases": {
-    "title": "Use Cases"
-  },
-  "helpful-links": {
-    "title": "Helpful Links"
-  },
-  "appendix": {
-    "title": "Appendices"
-  },
   "exercises": {
     "title": "Exercises",
     "type": "page"
   },
-  "contact": {
-    "title": "Contact ↗",
-    "type": "page",
-    "href": "",
-    "newWindow": true
+  "examples": {
+    "title": "Examples"
+  },
+  "helpful-links": {
+    "title": "Helpful Links"
+  },
+  "appendices": {
+    "title": "Appendices"
   }
 }

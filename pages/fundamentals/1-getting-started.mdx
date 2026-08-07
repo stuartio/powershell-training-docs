@@ -50,6 +50,8 @@ Install-Module PowerShellGet -Force
 
 > If you run `Install-Module` without a `-Scope` parameter it will attempt to install the module for all users, which requires elevated privileges. If you do not have these privileges you can install the module for your user only by running `Install-Module SomeModule -Scope CurrentUser`.
 
+> Unless you have updated your local preferences, the PowerShell Gallery is not a trusted source, and you will be prompted to confirm that you wish to install the module. You can avoid this prompt by running `Install-PSResource -TrustRepository` to avoid the prompt, or `Set-PSRepository -Name PSGallery -InstallationPolicy Trusted` to mark the gallery as a trusted source for all future installs. Alternatively, if you are using `Install-Module` you can use the `-Force` parameter to avoid the prompt.
+
 ## Case Sensitivity
 
 PowerShell, even when run on a case-sensitive operating system like MacOS, is case-insensitive. This means that all command names, parameters and values are case-insensitive. For example, the following commands are all equivalent:
