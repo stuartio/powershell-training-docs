@@ -4,19 +4,30 @@ This request came in from an SE who was having issues removing DataStream from a
 
 The trick here is using the `New-BulkSearch` command, which is a super-useful feature of the Property API. By using a hacky search term, `$.name`, we can find all properties with a name, i.e. all of them, then select only the elements we want as a unique list.
 
+1. Find account switch key
+
 ```powershell
-# 1. Find account switch key
 Get-AccountSwitchKey -Search 'Stream UK Media Services Limited'
 
 accountSwitchKey    accountName
 ----------------    -----------
 F-AC-1474324:1-2RBL Stream UK Media Services Limited_Direct Customer
-
-# 2. List all properties using a hack with the PAPI bulk search capability (see https://askathena.akamai.com/spaces/4/services/articles/knowledge/7191/listing-all-properties-in-an-account)
-
-$R = New-BulkSearch -Match '$.name' -AccountSwitchKey F-AC-1474324:1-2RBL -Synchronous
-
-# 3. Filter out just the property name and ID from the list and drop duplicates, then write to a CSV
-
-$R.results | select propertyName, propertyId -Unique | Export-Csv .\customer.csv 
 ```
+
+2. List all properties using a hack with the PAPI bulk search capability (see https://askathena.akamai.com/spaces/4/services/articles/knowledge/7191/listing-all-properties-in-an-account)
+
+```powershell
+$Search = New-BulkSearch -Match '$.name' -AccountSwitchKey F-AC-1474324:1-2RBL -Synchronous
+```
+
+3. Filter out just the property name and ID from the list and drop duplicates, then write to a CSV
+
+This step uses the `Select-Object` cmdlet to select only the `propertyName` and `propertyId` fields, and the `-Unique` parameter to remove duplicates. Finally, it uses the `Export-Csv` cmdlet to write the results to a CSV file.
+
+It is also a simple but powerful example of how to use the pipeline in PowerShell to chain together multiple commands and process data in a streamlined way.
+
+```powershell
+$Search.results | Select-Object propertyName, propertyId -Unique | Export-Csv .\customer.csv 
+```
+
+> Note: If you are using Windows PowerShell, i.e. version 5.1 (first, why?!), include the `-NoTypeInformation` parameter in the `Export-Csv` command to avoid adding a type information line at the top of the CSV file.
