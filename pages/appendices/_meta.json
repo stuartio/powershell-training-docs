@@ -1,7 +1,4 @@
 {
-  "exercises": {
-    "title": "All Exercises"
-  },
   "conditional-operators": {
     "title": "Conditional Operators"
   },
@@ -13,5 +10,14 @@
   },
   "advanced-parameters": {
     "title": "Advanced Parameters"
+  },
+  "errors": {
+    "title": "Errors"
+  },
+  "access-based-enumeration": {
+    "title": "Access Based Enumeration"
+  },
+  "splatting": {
+    "title": "Splatting"
   }
 }

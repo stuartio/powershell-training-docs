@@ -25,5 +25,8 @@
   },
   "9-error-handling": {
     "title": "Error Handling"
+  },
+  "10-working-with-files": {
+    "title": "Working with Files"
   }
 }

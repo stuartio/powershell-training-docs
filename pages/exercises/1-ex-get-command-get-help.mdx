@@ -1,0 +1,33 @@
+import { Steps } from 'nextra/components'
+
+# Exercise 1: Get Command and Get Help
+
+<Steps>
+{<h3>Check Modules</h3>}
+Run the following code. The first command shows all _loaded_ modules in your session (which resets when you close and reopen PowerShell). The second shows all _available_ modules on your system, including those that are not loaded. You can use the `-ListAvailable` parameter to see all modules installed on your system.
+
+```powershell
+Get-Module
+```
+
+```powershell
+Get-Module -ListAvailable
+```
+
+{<h3>Find the command you might use to create an EdgeWorker</h3>}
+Remember, PowerShell uses a Verb-Noun format for its commands, and the `Akamai.EdgeWorkers` module contains all commands related to EdgeWorkers. Use the `Get-Command` command to find the command you might use to create an EdgeWorker.
+
+> If you are unsure which verb is used for creating an object, check the [Approved Verbs](../appendices/approved-verbs/) appendix for a list of common verbs and their intended use.
+
+
+{<h3>Get-Help on your command</h3>}
+Once you've found your command, run `Get-Help <command>` to see the help documentation for that command. This will give you information on how to use the command, its parameters, and examples. Try out the differences with the `-Detailed` and `-Full` parameters to see more information.
+
+
+{<h3>Work out the full command</h3>}
+Using the help info from the previous step, work out the full command you would need to create an EdgeWorker. Feel free to use sample values for things like `-GroupID`, and remember to check the help info for all required parameters. You may include any _optional_ parameters as you see fit, but you must include all required ones in your command.
+
+
+{<h3>Re-Check loaded modules</h3>}
+Re-run the `Get-Module` command from the first step, without the `-ListAvailable` parameter. Note which modules were auto-loaded in the background.
+</Steps>

@@ -1,0 +1,17 @@
+# Approved Verbs
+
+PowerShell uses a pre-defined set of allowed verbs for its commands. You can use alternative verbs in custom commands, but doing so throws a warning when the command is loaded, so we avoid it in the Akamai project. Below are the most command verbs you will come across and what their intended use is.
+
+## Common verbs in the Akamai PowerShell modules
+
+| Verb | Purpose | Example Akamai commands |
+| --- | --- | --- |
+| Get | Retrieves existing objects, configuration, or API data. Remember, this command is used for both "get one" and "list all" operations. | `Get-AccountSwitchKey`, `Get-PropertyRules`, `Get-Contract` |
+| Add | Adds a new item to an existing object or collection, such as a hostname or include. | `Add-PropertyHostname`, `Add-ClientListItem` |
+| New | Creates a new resource or object in the service, such as a property or activation. | `New-GTMProperty`, `New-PropertyActivation`, `New-AppSecConfiguration` |
+| Set | Updates or modifies an existing configuration or resource. | `Set-GTMProperty`, `Set-AppSecPolicyCustomRule`, `Set-PropertyRules` |
+| Update | Updates or modifies an existing configuration or resource. This is typically different different from `Set-` in that `Set-` typically replaces a deployed asset entirely (such as a Property rule tree), whereas `Update-` is more targeted and only updates one or more attributes, using the PATCH HTTP method. | `Update-DataStream`, `Update-PropertyRule` |
+| Remove | Deletes or removes an existing object or association. | `Remove-GTMProperty`, `Remove-Property`, `Remove-EdgeWorker` |
+| Invoke | Executes an action or sends a request to an API. | `Invoke-AkamaiRequest`, `Invoke-NetstorageRequest` |
+| Undo | Reverts a prior action or cancels an in-progress operation, such as an activation. | `Undo-PropertyActivation`, `Undo-EdgeWorkerActivation` |
+

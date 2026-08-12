@@ -1,0 +1,151 @@
+# Working with Files
+
+PowerShell has built-in mechanisms for working with various file types, the most common of which being test, csv and json.
+
+## TXT, or any text-based file
+
+Text files can be read from and written to by using `Get-Content` for reading, and either `Set-Content`, `Add-Content` or `Out-File` for writing. 
+
+### Reading text files
+
+When reading a file, the default behaviour is to read a file as an array of strings, splitting the file by line breaks (LF vs CRLF has no effect).
+
+To read a 10-line file into an array of 10 strings, you would run
+
+```powershell
+$MyStrings = Get-Content -Path myfile.txt
+```
+
+If, however, you wanted to read the file as a single string, you would add the `-Raw` parameter to the command, like this:
+
+```powershell
+$MyString = Get-Content -Path myfile.txt -Raw
+```
+
+> The `-Raw` parameter is almost always used when reading json files. See below.
+
+### Writing Text Files
+
+If you have a string (or strings) you wish to write to a file, you can use `Set-Content` to replace the entire contents of the file, or `Add-Content` to append to the end of the file. For example, to write a single string to a file, you would run
+
+```powershell
+$MyString = "Hello, World!"
+Set-Content -Path myfile.txt -Value $MyString
+```
+
+This would produce a text file whose entire contents were "Hello, World!". If you wanted to append a string to the end of the file instead, you would run
+
+```powershell
+$MyString = "Hello, again!"
+Add-Content -Path myfile.txt -Value $MyString
+```
+
+This would leave the original contents of the file intact, and add "Hello, again!" to the end of the file.
+
+> Whether or not your file ends with a new line character depends on the `-NoNewLine` parameter, which both `Set-Content` and `Add-Content` support. By default, both commands will add a new line character to the end of the file after writing. But, if you use `Add-Content` the new text you add will be appended _immediately_ after the last character the file had previously. So, if you were to do this:
+
+```powershell
+"Line 1" | Set-Content -Path myfile.txt -NoNewLine
+"Line 2" | Add-Content -Path myfile.txt
+```
+
+The resulting file would contain "Line 1Line 2".
+
+Alternatively, you can use `Out-File`, which contains an `-Append` parameter for appending data rather than overwriting. This function behaves almost exactly the same as `Set-Content` and `Add-Content`, but without some of the built-in formatting. It also does not hold open the file handle, so it is better for writing to files that are being read by other processes.
+
+> When using `Set-Content` or `Out-File`, if the file exists the command will error unless you add the `-Force` parameter, which will overwrite the file. If you use `Add-Content`, the command will not error, and will simply append to the end of the file.
+
+### Encoding and line endings
+
+When writing data to a text-based file, you sometimes need to consider encoding and line endings, to ensure the file is compatible with other users. Previously, both `Set-Content` and `Out-File` defaulted to using ASCII text-encoding, which does not handle many special characters (such as those found in cyrilic or asian languages). It is highly recommended to use the `-Encoding UTF8` parameter when writing to text files, as this will ensure that all characters are preserved. For example:
+
+```powershell
+$MyString = "Hello, World!"
+Set-Content -Path myfile.txt -Value $MyString -Encoding UTF8
+```
+
+Similarly, line breaks tend to differ between Windows and Linux-based platforms. Windows uses to characters, the carriage return (CR) and the line feed (LF), whereas Linux platforms just use the line feed. PowerShell does not have a mechanism for specifying line endings when writing your files, but if you are writing data and want to ensure line endings are uniform you can use the `-NoNewLine` parameter to avoid adding a new line character, and instead add your own line breaks using the `"`n"` (LF) or "`r`n"` (CRLF) characters. For example, to write a file with Linux-style line endings, you would run:
+
+```powershell
+$MyString = "Line 1`nLine 2"
+Set-Content -Path myfile.txt -Value $MyString -NoNewLine
+```
+
+## JSON files
+
+PowerShell is extremely powerful when working with JSON data, as it can convert that data into a native PowerShell object, allowing you to sort, filter and otherwise manipulate the data much more easily (and you don't have to muck about with complex `jq` queries).
+
+
+### Reading JSON Data
+
+To get JSON text into a PowerShell object, you would first read it as a string, then pipe it to the `ConvertFrom-Json` command, like this:
+
+```powershell
+$MyObject = Get-Content myfile.json -Raw | ConvertFrom-Json
+```
+
+This will leave you with a PSCustomObject, `$MyObject`, which you can then manipulate as you would any other object. For example, if the JSON file contained an array of objects, you could filter them like this:
+
+```powershell
+$FilteredObjects = $MyObject | Where-Object { $_.Property -eq "Value" }
+```
+
+### Writing JSON Data
+
+Writing JSON data is very simple in PowerShell, and only really has one caveat. To write a PowerShell object to a JSON file, you would use the `ConvertTo-Json` command then pipe _that_ to `Set-Content` or `Out-File`, like this:
+
+```powershell
+$MyObject | ConvertTo-Json | Set-Content -Path myfile.json -Encoding UTF8
+```
+
+The only concern here is that `ConvertTo-Json` has a default depth of 2, which means that if your object contains nested objects deeper than 2 levels, they will be truncated. To avoid this, you can use the `-Depth` parameter to specify how deep you want to go. For example, to convert an object with a depth of 5, you would run:
+
+```powershell
+$MyObject | ConvertTo-Json -Depth 5 | Set-Content -Path myfile.json -Encoding UTF8
+```
+
+> The `-Depth` parameter has a maximum value of 100, which you will only really ever exceed if your object has circular references, which will then throw an error. As such, since you may not know offhand the depth of your object, it is generally best practice to use the maximum value of 100, unless you know for sure that your object is shallower than that.
+
+## CSV Files
+
+PowerShell natively supports reading from and writing to CSV files easily, which makes it very convenient to represent object data in a user-friendly format.
+
+### Reading CSV Data
+
+You can convert CSV data into a PowerShell object by using the `Import-Csv` command, like this:
+
+```powershell
+$MyObject = Import-Csv -Path myfile.csv
+```
+
+This will create an array of PSCustomObjects, with each entry having properties based on the column headers in the CSV file. You can then manipulate this object as you would any other PowerShell object, like this:
+
+```powershell
+$FilteredObjects = $MyObject | Where-Object { $_.Property -eq "Value" }
+```
+
+### Writing CSV Data
+
+If you have data as an array of objects, you can write it to a CSV file using the `Export-Csv` command, like this:
+
+```powershell
+$MyObject | Export-Csv -Path myfile.csv
+```
+
+> In Windows PowerShell (v5.1) there is an additional line added to the top of the CSV file, which is a comment line containing the text `#TYPE System.Management.Automation.PSCustomObject`. This is not present in PowerShell 6+, and can be avoided in Windows PowerShell by using the `-NoTypeInformation` parameter. Or, better yet, upgrade to PowerShell 7 and avoid this issue entirely, as well as many, many others.
+
+One thing to note is that if you havea an array of objects whose properties are not always the same, e.g. some members of the array have a certain property and others do not, you may end up with missing columns in your CSV file. This is because `Export-Csv` will only create columns for properties which exist on the first object in the array. If you want to ensure that all properties are included, you can use the `-Force` parameter, which will create a column for every property found in the entire array, like this:
+
+```powershell
+$MyObject | Export-Csv -Path myfile.csv -Force
+```
+
+## Excel Data
+
+PowerShell has no support for working natively with Excel files, but you can use the `ImportExcel` module to achieve. You can install it by running:
+
+```powershell
+Install-Module ImportExcel
+```
+
+Once this is installed you can export your data into multiple worksheets, use features like AutoSize, add tables etc. Check out the [ImportExcel module](https://github.com/dfinke/ImportExcel) for more information on how to use it.

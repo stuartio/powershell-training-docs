@@ -1,0 +1,65 @@
+# Errors
+
+PowerShell features a built-in automatic variable called **`$Error`**, which acts as a global history log for all errors occurring during your current session. 
+
+Additionally, PowerShell provides a built-in common parameter called **`-ErrorVariable`**, allowing you to capture command-specific errors into a custom variable.
+
+---
+
+### The Global `$Error` Variable
+The `$Error` variable is a built-in, system-managed collection (`ArrayList`) containing `ErrorRecord` objects.
+
+* **Reverse Order**: The most recent error is always stored at index 0 (`$Error[0]`).
+* **Session Bound**: The array is ephemeral and clears automatically when you close the PowerShell session.
+* **Inspection**: You can access specific error details like exception messages or stack traces using dot notation.
+
+```powershell
+# View the most recent error object
+\$Error[0]
+
+# View the deep technical details of the latest error
+\$Error[0] | Select-Object *
+
+# Check how many errors have occurred in this session
+\$Error.Count
+
+# Clear the error history log completely
+\$Error.Clear()
+```
+
+---
+
+### The `-ErrorVariable` Parameter (and `-EV`)
+Every built-in PowerShell cmdlet supports the `-ErrorVariable` parameter. This isolates and intercepts errors from a single command without forcing you to parse the entire global `$Error` collection.
+
+* **No Dollar Sign**: When defining the variable inside the parameter, pass the name **without** the `$` prefix.
+* **Overwrite Default**: By default, running a new command overwrites your custom error variable.
+* **Appending (`+`)**: Prepend a `+` sign to the variable name to add new errors to the existing collection instead of wiping it out.
+
+```powershell
+# Capture errors into a variable named MyErrors (No \$ used in the parameter)
+Get-ChildItem -Path "C:\NonExistentFolder" -ErrorVariable MyErrors
+
+# Read the captured error (Use \(here to read it)\)MyErrors
+
+# Silently suppress console errors but still log them to a variable
+Get-Service -Name "FakeService" -ErrorVariable ServiceErr -ErrorAction SilentlyContinue
+\$ServiceErr
+
+# Append errors across multiple distinct commands using "+"
+Get-Item "C:\MissingFile1.txt" -ErrorVariable +BatchErrors -ErrorAction SilentlyContinue
+Get-Item "C:\MissingFile2.txt" -ErrorVariable +BatchErrors -ErrorAction SilentlyContinue
+\$BatchErrors.Count # Returns 2
+```
+
+---
+
+### Other Built-In Error Elements
+
+| Feature | Type | Function |
+| :--- | :--- | :--- |
+| **`$?`** | Automatic Variable | Contains a boolean (`$True`/`$False`) indicating if the last command completed successfully. |
+| **`$_`** or **`$PSItem`** | Automatic Variable | Represents the current error object inside a `catch` block. |
+| **`$ErrorActionPreference`** | Preference Variable | Determines how the shell reacts to non-terminating errors (e.g., `Continue`, `Stop`, `SilentlyContinue`). |
+| **`$MaximumErrorCount`** | Preference Variable | Sets the upper limit of errors stored in the global `$Error` array (default is 256). |
+---

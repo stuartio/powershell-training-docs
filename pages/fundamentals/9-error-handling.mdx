@@ -1,1 +1,61 @@
 # Error Handling
+
+As with all programming languages, you should expect errors to occur in PowerShell from time to time. PowerShell has a built-in mechanism for error-handling, but you can also program in try/catch blocks yourself so that errors are dealt with in any way you wish.
+
+## Default Handling
+
+Most built-in commands support the `-ErrorAction` parameter, which allows you to control how errors are handled. The default value is `Continue`, which means that PowerShell will continue executing the script even if an error occurs. You can change this value to `Stop`, which will cause PowerShell to stop executing the script when an error occurs, or to `SilentlyContinue`, which will suppress error messages and continue executing the script.
+
+Alternatively, you can use the `$ErrorActionPreference` variable to set the default error action for all commands in your script. For example, to set the default error action to `Stop`, you can run:
+
+```powershell
+$ErrorActionPreference = 'Stop'
+```
+
+Note, though, that this applies to **all** commands in your session, which may have unintended consequences. It is generally better to use the `-ErrorAction` parameter on a per-command basis.
+
+## Try/Catch
+
+Any PowerShell command you run which has any chance of failing, such as **all** API calls, should be wrapped in a try/catch block. This allows you to catch any errors which are by the command (_throw_ is the verb PowerShell uses when it creates an error, Python uses _raise_), then do whatever is best in your situation, such as retrying the command, or skipping the rest of a given loop. To give a basic example, let's say you wanted to work on an Image & Video Manager Policy Set, but it might not exist. Without error handling, it would look like this
+
+```powershell
+$PolicySetID = 12345
+$PolicySet = Get-IVMPolicySet -PolicySetID $PolicySetID
+Invoke-AkamaiRequest: HTTP 400 - Bad Request - Policy Set 12345 does not exist. See $Error[0].exception.data for more information.
+```
+
+In a script, this would then move on to the next line, even though it had previous failed, which could then cause all kinds of weird errors. Instead, you should wrap it in a try/catch block, which would look like this:
+
+```powershell
+$PolicySetID = 12345
+try {
+    $PolicySet = Get-IVMPolicySet -PolicySetID $PolicySetID
+}
+catch {
+    Write-Host "The Image & Video Manager Policy Set does not exist"
+}
+```
+
+Which produces simply:
+
+```powershell
+The Image & Video Manager Policy Set does not exist
+```
+
+Now, the catch block need not only be there to neatly communicate errors. In fact, in this case you could use it to create the policy set itself, thus ensuring it would exist for the rest of the script.
+
+```powershell
+$PolicySetID = 12345
+try {
+    $PolicySet = Get-IVMPolicySet -PolicySetID $PolicySetID
+}
+catch {
+    Write-Debug "Creating IVM missing policy set" # It's always good to put in debug logging so you can see what happened when you run the script in debug mode
+    $PolicySet = New-IVMPolicySet -Name "My Policy Set" -Region US -Type IMAGE -ContractID 1-2AB34C:1-2RBL
+    $PolicySetID = $PolicySet.id
+}
+```
+
+## The Global `$Error` Variable
+
+For more information on the `$Error` variable, see the [Errors](../appendices/errors.mdx) appendix.
