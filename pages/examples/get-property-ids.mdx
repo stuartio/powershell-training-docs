@@ -1,0 +1,22 @@
+# Get Property IDs and export to CSV
+
+This request came in from an SE who was having issues removing DataStream from a number of properties, for which he only had the IDs. He asked if there was an easy way to associate all Property IDs with their names, and export the results to a CSV file.
+
+The trick here is using the `New-BulkSearch` command, which is a super-useful feature of the Property API. By using a hacky search term, `$.name`, we can find all properties with a name, i.e. all of them, then select only the elements we want as a unique list.
+
+```powershell
+# 1. Find account switch key
+Get-AccountSwitchKey -Search 'Stream UK Media Services Limited'
+
+accountSwitchKey    accountName
+----------------    -----------
+F-AC-1474324:1-2RBL Stream UK Media Services Limited_Direct Customer
+
+# 2. List all properties using a hack with the PAPI bulk search capability (see https://askathena.akamai.com/spaces/4/services/articles/knowledge/7191/listing-all-properties-in-an-account)
+
+$R = New-BulkSearch -Match '$.name' -AccountSwitchKey F-AC-1474324:1-2RBL -Synchronous
+
+# 3. Filter out just the property name and ID from the list and drop duplicates, then write to a CSV
+
+$R.results | select propertyName, propertyId -Unique | Export-Csv .\customer.csv 
+```
