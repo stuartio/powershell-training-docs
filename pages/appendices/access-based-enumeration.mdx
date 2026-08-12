@@ -1,0 +1,65 @@
+# Access Based Enumeration
+
+This feature is one of the most powerful features of PowerShell, and something most users will utilise despite not being aware of its somewhat convoluted name. What Access Based Enumeration does is allow you to enumerate a single property from an array of objects, itself as an array. That is quite a confusing statement, but easier to understand with an example. Let's say you have a list of Akamai Properties, defined like this:
+
+```powershell
+$Properties = @(
+    @{ 
+        PropertyName = "Property 1"
+        PropertyID = 123456
+        PropertyVersion = 1
+        GroupID = 111111
+        ContractID = "1-2AB34C"
+    }
+    @{ 
+        PropertyName = "Property 2"
+        PropertyID = 234567
+        PropertyVersion = 12
+        GroupID = 222222
+        ContractID = "1-2AB34C"
+    }
+    @{ 
+        PropertyName = "Property 3"
+        PropertyID = 345678
+        PropertyVersion = 39
+        GroupID = 333333
+        ContractID = "1-2AB34C"
+    }
+    @{ 
+        PropertyName = "Property 4"
+        PropertyID = 456789
+        PropertyVersion = 112
+        GroupID = 444444
+        ContractID = "1-2AB34C"
+    }
+)
+```
+
+and you want to get the names of all of them. You could do this:
+
+```powershell
+$PropertyNames = $Properties | ForEach-Object { $_.PropertyName }
+$PropertyNames
+
+Property 1
+Property 2
+Property 3
+Property 4
+```
+
+However, what you can do instead is simply:
+
+```powershell
+$Properties.PropertyName
+
+Property 1
+Property 2
+Property 3
+Property 4
+```
+
+What this last statement means is:
+
+"Give me the `PropertyName` property of each object in the `$Properties` array, and return them as an array."
+
+This process can be used for any property of any object, even if that property is itself an array.

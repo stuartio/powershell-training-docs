@@ -1,1 +1,17 @@
 # Advanced Parameters
+
+When defining parameters in your PowerShell function, there are a huge number of options you can use to define how your parameters behave. This is a very broad topic, and well beyond the scope of this course, but here are a few of the more common options you might use.
+
+| Element | What it does | Example |
+| --- | --- | --- |
+| `Mandatory` | Requires the caller to provide a value. | `[Parameter(Mandatory)] [string]$Name` |
+| Data type | Constrains input to a specific .NET type. | `[int]$Count` |
+| `Position` | Allows unnamed arguments in a specific order. | `[Parameter(Position = 0)] [string]$Path` |
+| `ValueFromPipeline` | Accepts incoming pipeline objects as parameter input. | `[Parameter(ValueFromPipeline)] [string]$InputObject` |
+| `ValueFromPipelineByPropertyName` | Binds pipeline object properties by matching parameter names. | `[Parameter(ValueFromPipelineByPropertyName)] [string]$ComputerName` |
+| `ValidateSet` | Restricts values to a fixed list of allowed options. | `[ValidateSet('Dev','Test','Prod')] [string]$Environment` |
+| `ValidatePattern` | Requires values to match a regex pattern. | `[ValidatePattern('^[A-Z]{3}\d{4}$')] [string]$TicketId` |
+| `ValidateRange` | Restricts numeric values to a min and max. | `[ValidateRange(1,100)] [int]$Percent` |
+| `Alias` | Adds alternate names for the same parameter. | `[Alias('CN')] [string]$ComputerName` |
+| `ParameterSetName` | Defines mutually exclusive parameter combinations. | `[Parameter(ParameterSetName = 'ById')] [int]$Id` |
+
