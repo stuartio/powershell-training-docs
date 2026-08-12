@@ -19,6 +19,11 @@ Remember, PowerShell uses a Verb-Noun format for its commands, and the `Akamai.E
 
 > If you are unsure which verb is used for creating an object, check the [Approved Verbs](../appendices/approved-verbs/) appendix for a list of common verbs and their intended use.
 
+Remember, you can also limit the modules included in your `Get-Module` search by using the `-Module` parameter, which also supports wildcards.
+
+```powershell
+Get-Command *Property* -Module Akamai.Property 
+```
 
 {<h3>Get-Help on your command</h3>}
 Once you've found your command, run `Get-Help <command>` to see the help documentation for that command. This will give you information on how to use the command, its parameters, and examples. Try out the differences with the `-Detailed` and `-Full` parameters to see more information.
