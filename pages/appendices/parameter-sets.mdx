@@ -1,0 +1,237 @@
+# Parameter Sets
+
+Parameter sets are a way to define mutually exclusive parameters for a function, such as if you want to allow a user to specify a name or ID, but not both. They can be extremely powerful in your function designs, and can hugely simplify the user experience, but writing them can be complex, and they do come with some caveats.
+
+The first and most important limitation is that when the user calls your function they can only match one parameter set. This means, in practice, that you cannot have two sets of mutually exclusive parameters without the number of parameter sets growing exponentially.
+
+For example, consider this simple function:
+
+```powershell
+function Get-Thing {
+    param (
+        [Parameter(Mandatory, ParameterSetName = 'ByName')]
+        [string]
+        $Name,
+
+        [Parameter(Mandatory, ParameterSetName = 'ById')]
+        [int]
+        $Id
+    )
+
+    Write-Output $($PSBoundParameters | ConvertTo-Json)
+}
+```
+
+This may seem overly complex at first glance, but what it does it mean that the user can call the function like this:
+
+```powershell
+Get-Thing -Name "MyThing"
+```
+
+or, like this:
+
+```powershell
+Get-Thing -Id 123
+```
+
+Then, the function will adapt accordingly. If the user tries to call the function with both parameters, they will get an error:
+
+```powershell
+Get-Thing -Name "MyThing" -Id 123
+Get-Thing: Parameter set cannot be resolved using the specified named parameters. One or more parameters issued cannot be used together or an insufficient number of parameters were provided.
+```
+
+You will also notice that both parameters are mandatory, which might also be confusing. This simply means that when PowerShell identifies you are using a specific parameter set, any Mandatory parameters in that set must be provided. In our example, it doesn't apply, but imagine we rewrote the function like this:
+
+```powershell
+function Get-Thing {
+    param (
+        [Parameter(Mandatory, ParameterSetName = 'ByName')]
+        [string]
+        $FirstName,
+
+        [Parameter(Mandatory, ParameterSetName = 'ByName')]
+        [string]
+        $LastName,
+
+        [Parameter(Mandatory, ParameterSetName = 'ById')]
+        [int]
+        $Id
+    )
+
+    Write-Output $($PSBoundParameters | ConvertTo-Json)
+}
+```
+
+Now, if you were to run the function with only the `-FirstName` parameter, PowerShell would identify that you are using the `ByName` parameter set, and would then prompt you to provide the `-LastName` parameter.
+
+```powershell
+❯_  Get-Thing -FirstName stuart
+
+cmdlet Get-Thing at command pipeline position 1
+Supply values for the following parameters:
+LastName:
+```
+
+This is a method we use extensively in the Akamai modules to split a single function between the "get one" and "list all" operations. Typically when you want a single item there are few, if any, additional parameters. But, when listing all you often have the abillity to limit the responses by page size, or a search term etc. Therefore we split the function into two parameter sets, such that if you do specify the ID required for the "get one" operation, you cannot then (and crucially will not be offered or prompted for) the other parameters.
+
+## Multiple Parameter Sets
+
+In certain scenarios, particularly in the Akamai.AppSec module, there are functions which require config information, as well as at the policy layer. You can provide the config by either its name or ID, as well as the policy by _its_ name or ID. Now, imagine we tried to set up a function to do this like this:
+
+```powershell
+function Get-AppSecPolicy {
+    param (
+        [Parameter(Mandatory, ParameterSetName = 'Config ID')]
+        [int]
+        $ConfigID,
+
+        [Parameter(Mandatory, ParameterSetName = 'Config Name')]
+        [string]
+        $ConfigName,
+
+        [Parameter(Mandatory, ParameterSetName = 'Policy ID')]
+        [int]
+        $PolicyID,
+
+        [Parameter(Mandatory, ParameterSetName = 'Policy Name')]
+        [string]
+        $PolicyName
+    )
+
+    Write-Output $($PSBoundParameters | ConvertTo-Json)
+}
+```
+
+In this case, you could run the function like this:
+
+```powershell
+Get-AppSecPolicy -ConfigID 123
+```
+
+But running it like this would throw an error:
+
+```powershell
+Get-AppSecPolicy -ConfigID 123 -PolicyID 456
+```
+
+This is because the `Config ID` parameter set is mutually exclusive with the `Policy ID` parameter set. The user can only match **one** parameter set, and therefore cannot provide both a config and policy ID.
+
+So, the (convoluted) solution is do it like this:
+
+```powershell
+function Get-AppSecPolicy {
+    param (
+        [Parameter(Mandatory, ParameterSetName = 'Config ID & Policy ID')]
+        [Parameter(Mandatory, ParameterSetName = 'Config ID & Policy Name')]
+        [int]
+        $ConfigID,
+
+        [Parameter(Mandatory, ParameterSetName = 'Config Name & Policy ID')]
+        [Parameter(Mandatory, ParameterSetName = 'Config Name & Policy Name')]
+        [string]
+        $ConfigName,
+
+        [Parameter(Mandatory, ParameterSetName = 'Config ID & Policy ID')]
+        [Parameter(Mandatory, ParameterSetName = 'Config Name & Policy ID')]
+        [int]
+        $PolicyID,
+
+        [Parameter(Mandatory, ParameterSetName = 'Config ID & Policy Name')]
+        [Parameter(Mandatory, ParameterSetName = 'Config Name & Policy Name')]
+        [string]
+        $PolicyName
+    )
+
+    Write-Output $($PSBoundParameters | ConvertTo-Json)
+}
+```
+
+This means that when you call the function, PowerShell will look at your parameters and figure out which unique parameter set matches your combination of parameters. For example, if you ran the function like this:
+
+```powershell
+Get-AppSecPolicy -ConfigID 123 -PolicyName "My Policy"
+```
+
+then PowerShell would identify that you are using the `Config ID & Policy Name` parameter set.
+
+As you can see, this does not scale well, as every pair of parameters you add means more and more parameter sets added to each parameter.
+
+## Failing to match a parameter set
+
+The above example, while fairly complex, is still valid PowerShell, and should work fine (we do it a lot in the Akamai.AppSec module). However, this is only because all the parameters involved are mandatory. You _have_ to provide them, and so PowerShell can make a decision as to which parameter set is the unique option to choose. But, imagine your `Get-AppSecPolicy` function could retrieve a single policy if specified by Name or ID, or _all_ policies if neither Policy ID or Name was specified. The code would look like this:
+
+```powershell
+function Get-AppSecPolicy {
+    param (
+        [Parameter(Mandatory, ParameterSetName = 'Config ID & Policy ID')]
+        [Parameter(Mandatory, ParameterSetName = 'Config ID & Policy Name')]
+        [int]
+        $ConfigID,
+
+        [Parameter(Mandatory, ParameterSetName = 'Config Name & Policy ID')]
+        [Parameter(Mandatory, ParameterSetName = 'Config Name & Policy Name')]
+        [string]
+        $ConfigName,
+
+        [Parameter(ParameterSetName = 'Config ID & Policy ID')]
+        [Parameter(ParameterSetName = 'Config Name & Policy ID')]
+        [int]
+        $PolicyID,
+
+        [Parameter(ParameterSetName = 'Config ID & Policy Name')]
+        [Parameter(ParameterSetName = 'Config Name & Policy Name')]
+        [string]
+        $PolicyName
+    )
+
+    Write-Output $($PSBoundParameters | ConvertTo-Json)
+}
+```
+
+Now, if you were to run your function like this:
+
+```powershell
+Get-AppSecPolicy -ConfigID 123
+```
+
+You would receive this error:
+
+```powershell
+Get-AppSecPolicy: Parameter set cannot be resolved using the specified named parameters. One or more parameters issued cannot be used together or an insufficient number of parameters were provided.
+```
+
+This is because by only providing the `ConfigID` parameter, PowerShell is still undecided as to which of the two applicable parameter sets it can use. It could be either `Config ID & Policy ID` or `Config ID & Policy Name`, and so it throws an error.
+
+This often prevents the use of Parameter Sets in the way you might want, but it can also often be alleviated by the use of the DefaultParameterSetName property of the CmdletBinding attribute. This allows you to specify which parameter set should be used if PowerShell cannot determine a unique match.
+
+```powershell
+function Get-AppSecPolicy {
+    [CmdletBinding(DefaultParameterSetName = 'Config ID & Policy ID')]
+    param (
+        [Parameter(Mandatory, ParameterSetName = 'Config ID & Policy ID')]
+        [Parameter(Mandatory, ParameterSetName = 'Config ID & Policy Name')]
+        [int]
+        $ConfigID,
+
+        [Parameter(Mandatory, ParameterSetName = 'Config Name & Policy ID')]
+        [Parameter(Mandatory, ParameterSetName = 'Config Name & Policy Name')]
+        [string]
+        $ConfigName,
+
+        [Parameter(ParameterSetName = 'Config ID & Policy ID')]
+        [Parameter(ParameterSetName = 'Config Name & Policy ID')]
+        [int]
+        $PolicyID,
+
+        [Parameter(ParameterSetName = 'Config ID & Policy Name')]
+        [Parameter(ParameterSetName = 'Config Name & Policy Name')]
+        [string]
+        $PolicyName
+    )
+
+    Write-Output $($PSBoundParameters | ConvertTo-Json)
+}
+```
+
+Now, if you were to run this function as you did before, it would complete, albeit with a null value for both `$PolicyID` and `$PolicyName`.

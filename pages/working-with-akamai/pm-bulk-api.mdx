@@ -1,1 +1,403 @@
 # Property Manager Bulk API
+
+The Akamai Property Manager API provides a bulk API, allowing you to search, version, patch and activate properties en masse, allowing you to make large scale changes very easily. As with all parts of the Property API, the Akamai.Property PowerShell module supports these commands, though due to their complexity it may not be immediately obvious how to use them. Follow the steps below to get started.
+
+## Search
+
+Bulk searching is likely the area of the bulk operations you will use the most, as it is extremely powerful for auditing. The `New-BulkSearch` command will allow you to search for properties based on a JSONPATH query, and give you a list of which properties match, their versions and activation status, and where in the rule tree the match was found.
+
+> Note: the value of a behavior or criterion is NOT returned with a bulk search, only whether or not it exists in the rule tree, and where. For example, you can search for those properties using an EdgeWorker whose ID is 12345, but _not_ search for all EdgeWorkers and tell you which ID was found in each identified property.
+
+The `New-BulkSearch` command can be used like this:
+
+```powershell
+$Results = New-BulkSearch -Match "$..behaviors[?(@.name == 'origin')].options[?(@.hostname=='origin.example.com')]]" -Synchronous
+```
+
+> Note: the `-Synchronous` parameter is optional, but if you do not include it, the command will return a job ID which you can use to check the status of the search. If you include `-Synchronous`, the command will wait for the search to complete and return the results, which is usually preferable.
+
+Assuming the search query is valid (which is easily the hardest part of using this API), results will look like this:
+
+```powershell
+bulkSearchId       : 8961863
+searchTargetStatus : COMPLETE
+searchSubmitDate   : 13/08/2026 17:44:04
+searchUpdateDate   : 13/08/2026 17:44:50
+bulkSearchQuery    : @{syntax=JSONPATH; match=$..behaviors[?(@.name == 'origin')].options[?(@.hostname=='origin.stuartmacleod.net')]]}
+results            : {@{propertyId=512522; propertyVersion=993; propertyName=smacleod-livedns; propertyType=TRADITIONAL; productionStatus=ACTIVE;
+                     stagingStatus=DEACTIVATED; isLatest=False; isLocked=True; matchLocations=System.Object[]; lastModifiedTime=14/04/2026 22:25:28;
+                     isSecure=False}, @{propertyId=512522; propertyVersion=1006; propertyName=smacleod-livedns; propertyType=TRADITIONAL; productionStatus=INACTIVE;
+                     stagingStatus=ACTIVE; isLatest=True; isLocked=True; matchLocations=System.Object[]; lastModifiedTime=16/06/2026 20:29:48; isSecure=False},
+                     @{propertyId=516850; propertyVersion=447; propertyName=smacleod-amd1; propertyType=TRADITIONAL; productionStatus=INACTIVE;
+                     stagingStatus=ACTIVE; isLatest=True; isLocked=True; matchLocations=System.Object[]; lastModifiedTime=09/07/2026 19:02:18; isSecure=False},
+                     @{propertyId=516850; propertyVersion=428; propertyName=smacleod-amd1; propertyType=TRADITIONAL; productionStatus=ACTIVE;
+                     stagingStatus=DEACTIVATED; isLatest=False; isLocked=True; matchLocations=System.Object[]; lastModifiedTime=29/06/2026 20:23:53;
+                     isSecure=False}…}
+```
+
+Then, if you drill down into the `results` property, you will (if your search finds anything) an array of objects, each one like this:
+
+```powershell
+❯_  $Results.results[0]
+
+propertyId       : 512522
+propertyVersion  : 993
+propertyName     : smacleod-livedns
+propertyType     : TRADITIONAL
+productionStatus : ACTIVE
+stagingStatus    : DEACTIVATED
+isLatest         : False
+isLocked         : True
+matchLocations   : {/rules/behaviors/0/options, /rules/children/9/children/0/children/0/behaviors/0/options,
+                   /rules/children/9/children/5/children/1/behaviors/0/options}
+lastModifiedTime : 14/04/2026 22:25:28
+isSecure         : False
+```
+
+Note here the property data, and an array of matchLocations, which are the JSONPATHs to the searched-for option.
+
+One thing to note, also, is which versions the bulk search will search. Each property will have up to 3 versions search: the latest version, the production-active version and the staging-active version. If these are the same, as would be the case often, then the results will be combined, but in the case of a property which matches your query which has different versions for latest, staging and production, you will see 3 entries in the `results` array. So, make sure to deduplicate the results, or filter them to only include the version you are concerned with, e.g. production-active.
+
+> You can find a list of usable bulk search queries in our [bulk search appendix](../appendices/bulk-search-queries.md).
+
+## Versioning
+
+The Property API provides a mechanism to create new versions of multiple properties in a single command. However, due to the complexity of the API call, there is not yet a more user-friendly way to do this in PowerShell, so you need to construct the request body directly, either as a JSON string, or as a PSCustomObject/HashTable. Regardless, here is a sample request:
+
+```powershell
+$Request = '{
+  "createPropertyVersions": [
+    {
+      "createFromVersion": 1,
+      "propertyId": "123456"
+    },
+    {
+      "createFromVersion": 9,
+      "propertyId": "234567"
+    }
+  ]
+}'
+
+$BulkVersionRequest = New-BulkPatch -Body $Request
+```
+
+or, in a more PowerShell-centric way:
+
+```powershell
+$Request = @{
+  createPropertyVersions = @(
+    @{
+      propertyId        = "123456"
+      createFromVersion = 1
+    },
+    @{
+      propertyId        = "234567"
+      createFromVersion = 9
+    },
+    @{
+      propertyId        = "345678"
+      createFromVersion = 24
+    }
+  )
+}
+
+$BulkVersionRequest = New-BulkPatch -Body $Request
+```
+
+What this is essentially saying is this:
+- Create a new version of property 123456, based on version 1
+- Create a new version of property 234567, based on version 9
+- Create a new version of property 345678, based on version 24
+
+As mentioned, we don't yet have things like name or version expansion, so you do need to know Property IDs and specific versions, but regardless, the structure of the request is pretty straightforward.
+
+Once the request completes (which typically takes maybe 20s), you can retrieve the results like this:
+
+```powershell
+$BulkVersionResults = $BulkVersionRequest | Get-BulkVersionedProperties
+$BulkVersionResults
+
+bulkCreateId                : 9638
+bulkCreateVersionsStatus    : COMPLETE
+bulkCreateVersionSubmitDate : 13/08/2026 18:06:45
+bulkCreateVersionUpdateDate : 13/08/2026 18:06:55
+createPropertyVersions      : {@{propertyId=574785; createFromVersion=132; propertyVersion=133; createVersionStatus=COMPLETE;
+                              versionLink=/papi/v0/properties/prp_574785/versions/133; createVersionSubmitDate=13/08/2026 18:06:45;
+                              createVersionUpdateDate=13/08/2026 18:06:55}, @{propertyId=123456; createFromVersion=154; propertyVersion=155;
+                              createVersionStatus=COMPLETE; versionLink=/papi/v0/properties/prp_123456/versions/155; createVersionSubmitDate=13/08/2026 18:06:45;
+                              createVersionUpdateDate=13/08/2026 18:06:55}}
+```
+
+> Note: you can simply pipe your `$BulkVersionRequest` variable into `Get-BulkVersionedProperties` and the command will extract the necessary parameters automatically. Which is cool. :-)
+
+`createPropertyVersions` is an array of individual property version results, one of which looks like this:
+
+```powershell
+❯_  $BulkVersionResults.createPropertyVersions[0]
+
+propertyId              : 574785
+createFromVersion       : 132
+propertyVersion         : 133
+createVersionStatus     : COMPLETE
+versionLink             : /papi/v0/properties/prp_574785/versions/133
+createVersionSubmitDate : 13/08/2026 18:06:45
+createVersionUpdateDate : 13/08/2026 18:06:55
+```
+
+## Patching
+
+The Property API's bulk patch feature allows you to update the rules of multiple properties in a single command. Property updates are defined using JSONPATCH syntax, which is fairly complex but allows you to make bespoke updates to multiple properties at once. For example, let's say we wanted to complete the following operations in a single command:
+
+- Update the default origin hostname for version 2 of property 123456 to `origin.example.com`
+- Remove the first child rule from version 10 of property 234567
+- Add the `autoDomainValidation` behavior to version 25 of property 345678
+
+> Note: this example updates 3 properties, but you could also perform 3 updates against the same property, or any other combination you wish.
+
+```powershell
+$Request = '{
+  "patchPropertyVersions": [
+      {
+          "propertyId": "123456",
+          "propertyVersion": 2,
+          "patches": [
+              {
+                  "op": "replace",
+                  "path": "/rules/behaviors/0/options/hostname",
+                  "value": "origin.example.com"
+              }
+          ]
+      },
+      {
+          "propertyId": "234567",
+          "propertyVersion": 10,
+          "patches": [
+              {
+                  "op": "remove",
+                  "path": "/rules/children/0"
+              }
+          ]
+      },
+      {
+        "propertyId": "345678",
+        "propertyVersion": 25,
+        "patches": [
+            {
+                "op": "add",
+                "path": "/rules/behaviors/1",
+                "value": {
+                    "name": "autoDomainValidation",
+                    "options": {
+                        "autodv": ""
+                    }
+                }
+            }
+        ]
+    }
+  ]
+}'
+
+$BulkPatchRequest = New-BulkPatch -Body $Request
+```
+
+In JSONPATCH syntax you have 3 operations you can use.
+
+| Operation | Description |
+| --- | --- |
+| Add | Adds a new value to the specified path. If the path already exists, the operation will fail. |
+| Remove | Removes the value at the specified path. If the path does not exist, the operation will fail. |
+| Replace | Replaces the value at the specified path. If the path does not exist, the operation will fail. |
+
+> When using `add` or `replace` the format of the `value` is dependent on what you are adding or replacing. For example, if you are adding a new behavior, the value will be an object with a `name` and `options` property. If you are replacing a simple string, the value will be that string. You do not need to encode the value in any way.
+
+In the above example, the request is defined as a JSON string, but you could also do this as a PowerShell PSCustomObject or Hashtable, like this:
+
+```powershell
+$Request = @{
+  patchPropertyVersions = @(
+    @{
+      propertyId        = "123456"
+      propertyVersion   = 2
+      patches           = @(
+        @{
+          op    = "replace"
+          path  = "/rules/behaviors/0/options/hostname"
+          value = "origin.example.com"
+        }
+      )
+    },
+    @{
+      propertyId        = "234567"
+      propertyVersion   = 10
+      patches           = @(
+        @{
+          op   = "remove"
+          path = "/rules/children/0"
+        }
+      )
+    },
+    @{
+      propertyId        = "345678"
+      propertyVersion   = 25
+      patches           = @(
+        @{
+          op    = "add"
+          path  = "/rules/behaviors/1"
+          value = @{
+            name    = "autoDomainValidation"
+            options = @{
+              autodv = ""
+            }
+          }
+        }
+      )
+    }
+  )
+}
+
+$BulkPatchRequest = New-BulkPatch -Body $Request
+```
+
+Once the request is submitted you must wait for it to complete, typically 30s to 1m, then you can retrieve the results like this:
+
+```powershell
+$BulkPatchResults = $BulkPatchRequest | Get-BulkPatchedProperty
+$BulkPatchResults
+
+bulkPatchId           : 17373
+bulkPatchStatus       : COMPLETE
+bulkPatchSubmitDate   : 13/08/2026 18:22:11
+bulkPatchUpdateDate   : 13/08/2026 18:22:19
+patchPropertyVersions : {@{patchPropertyId=123456; patchPropertyVersion=2; propertyName=my-property; patches=System.Object[];
+                        patchPropertyVersionStatus=COMPLETE; patchSubmitDate=13/08/2026 18:22:11; patchUpdateDate=13/08/2026 18:22:19;
+                        propertyVersionRulesLink=/papi/v0/properties/123456/versions/155/rules/; papiWarnings=System.Object[]}, @{patchPropertyId=234567;
+                        patchPropertyVersion=10; propertyName=smacleod-demo; patches=System.Object[]; patchPropertyVersionStatus=COMPLETE;
+                        patchSubmitDate=13/08/2026 18:22:11; patchUpdateDate=13/08/2026 18:22:18;
+                        propertyVersionRulesLink=/papi/v0/properties/234567/versions/10/rules/; papiErrors=System.Object[]; papiWarnings=System.Object[]}}
+```
+
+`patchPropertyVersions` is an array of individual property patch results, one of which looks like this:
+
+```powershell
+❯_  $BulkPatchResults.patchPropertyVersions[0]
+
+patchPropertyId            : 123456
+patchPropertyVersion       : 2
+propertyName               : my-property
+patches                    : {@{op=remove; path=/rules/children/0}}
+patchPropertyVersionStatus : COMPLETE
+patchSubmitDate            : 13/08/2026 18:22:11
+patchUpdateDate            : 13/08/2026 18:22:18
+propertyVersionRulesLink   : /papi/v0/properties/123456/versions/2/rules/
+papiErrors                 : {@{type=https://problems.luna.akamaiapis.net/papi/v0/validation/required_feature_default; detail=For this property to work correctly,
+                             add this behavior Content Provider Code in the Default Rule.; errorLocation=#/rules}}
+papiWarnings               : {@{type=https://problems.luna.akamaiapis.net/papi/v0/validation/validation_message.ssl_custom_warning_test_staging; detail=If you are
+                             changing your `Origin Server` SSL Certificate Verification settings it is strongly recommended that you test on Staging before
+                             activating on Production. Failure to test on Staging may result in a service outage.; errorLocation=#/rules/behaviors/0},
+                             @{type=https://problems.luna.akamaiapis.net/papi/v0/validation/validation_message.http3_enabled_warning_reuse; detail=HTTP/3 connection
+                             reuse lets clients re-use an open connection for any domain included in your certificate, even if these domains point to different
+                             origins. Most browsers will perform a DNS query to ensure there's an overlap in the domain's IP before reusing the connection. If
+                             you're using multiple certificates, specifically both Standard TLS and Enhanced TLS, don't include the same domain across them. If you
+                             do, an HTTP request to the domain that requires Enhanced TLS could be resolved using ;
+                             errorLocation=#/rules/children/0/children/1/behaviors/2}}
+```
+
+The result quite helpfully also provides you warnings and errors (if they exist) for the patched proeprty, which is critical to know if you then wish to activate the property in the next phase.
+
+## Activating
+
+Once you have found your properties, created new versions and patched them, finally you will likely wish to activate them, which you can also do through the Property Bulk options.
+
+> Note: there is a limit to the number of activations you can perform on your account in a single day, which defaults to 500. Production and staging activations both count equally, and the limit applies equally whether you are activating in bulk or with individual activation calls. It can be raised in the back end, which requires a support ticket, but it will take some time so plan accordingly.
+
+A sample bulk activation request looks like this:
+
+```powershell
+$Request = '{
+    "defaultActivationSettings": {
+        "acknowledgeAllWarnings": true,
+        "useFastFallback": false,
+        "fastPush": true,
+        "notifyEmails": [
+            "you@example.com",
+            "them@example.com"
+        ]
+    },
+    "activatePropertyVersions": [
+        {
+            "propertyId": "123456",
+            "propertyVersion": 2,
+            "network": "STAGING",
+            "note": "Some activation note"
+        },
+        {
+            "propertyId": "234567",
+            "propertyVersion": 10,
+            "network": "STAGING",
+            "note": "Sample activation",
+            "notifyEmails": [
+                "someoneElse@somewhere.com"
+            ]
+        },
+        {
+            "propertyId": "345678",
+            "propertyVersion": 25,
+            "network": "PRODUCTION",
+            "acknowledgeAllWarnings": false,
+            "note": "created by xyz",
+            "acknowledgeWarnings": [
+                "msg_123",
+                "msg_234"
+            ]
+        }
+    ]
+}'
+
+$BulkActivationRequest = New-BulkActivation -Body $Request
+```
+
+Once the activations are created (note: NOT once the properties are actually activated, which will take much longer), you can retrieve the results like this:
+
+```powershell
+$BulkActivationResults = $BulkActivationRequest | Get-BulkActivatedProperties
+$BulkActivationResults
+
+bulkActivationId          : 23481
+bulkActivationStatus      : COMPLETE
+bulkActivationSubmitDate  : 13/08/2026 20:01:03
+bulkActivationUpdateDate  : 13/08/2026 20:01:25
+activatePropertyVersions  : {@{propertyId=123456; propertyVersion=2; propertyName=my-property; network=STAGING; note=Some activation note;
+                            notifyEmails=System.Object[]; acknowledgeAllWarnings=True;
+                            propertyActivationsLink=/papi/v0/properties/prp_574785/activations/atv_20314202; activationSubmitDate=13/08/2026 20:01:03;
+                            activationUpdateDate=13/08/2026 20:01:25; activationStatus=NEW; taskStatus=COMPLETE; useFastFallback=False; fastPush=True}}
+defaultActivationSettings : @{notifyEmails=System.Object[]; acknowledgeAllWarnings=True; useFastFallback=False; fastPush=True}
+```
+
+> Note: for production activations performed by Akamai PS users, you must, as with the individual activation command, provide a compliance record. This is achieved by adding a `complianceRecord` property to the default activation settings, like this
+
+```powershell
+{
+    "defaultActivationSettings": {
+        "acknowledgeAllWarnings": true,
+        "useFastFallback": false,
+        "fastPush": true,
+        "notifyEmails": [
+            "user@akamai.com"
+        ],
+        "complianceRecord": {
+            "noncomplianceReason": "NONE",
+            "peerReviewedBy": "user@akamai.com",
+            "unitTested": true,
+            "customerEmail": "customer@example.com"
+        }
+    },
+    "activatePropertyVersions": [
+        {
+            "propertyId": "123456",
+            "propertyVersion": 2,
+            "network": "PRODUCTION",
+            "note": "Some activation note"
+        }
+    ]
+}
+```

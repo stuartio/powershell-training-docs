@@ -19,5 +19,11 @@
   },
   "splatting": {
     "title": "Splatting"
+  },
+  "bulk-search-queries": {
+    "title": "Bulk Search Queries"
+  },
+  "parameter-sets": {
+    "title": "Parameter Sets"
   }
 }

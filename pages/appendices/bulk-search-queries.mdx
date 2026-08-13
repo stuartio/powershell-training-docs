@@ -1,0 +1,23 @@
+# Bulk Search Queries
+
+The following are example bulk search queries you can use with `New-BulkSearch`, specifically in the `-Match` parameter. You can swap out the name of a given  behavior or criterion as needed.
+
+> For a list of available behaviors and criteria, try `Get-PropertyBehaviors` and `Get-PropertyCriteria`
+
+| Query | Description |
+|-------|-------------|
+| `$.name` | Returns all properties. |
+| `$..behaviors[?(@.name == "adaptiveAcceleration")]` | Returns all properties that have the `adaptiveAcceleration` behavior. Swap out the behavior name as needed. |
+| `$..criteria[?(@.name=='cloudletsOrigin')]` | Returns all properties that have the `cloudletsOrigin` criterion. Swap out the criterion name as needed. |
+| `$..behaviors[?(@.name == "customBehavior")].options[?(@.behaviorId == "cbe_123456")]]` | Returns all properties that have the `customBehavior` behavior with a specific `behaviorId`. |
+| `$.variables[?(@.name=='PMUSER_CACHE_KEY_HOST')]` | Returns all properties that have the `PMUSER_CACHE_KEY_HOST` variable. |
+| `$.variables[?(@.value=~ /.*example.com.*/)]` | Returns all properties that have any variable whose value contains `example.com`. Note the use of the `=~` operator, which allows for regex matching. |
+| `$.variables[?(@.name=='PMUSER_CACHE_KEY_HOST' && @.value=='www.example.com')]` | Returns all properties which have a variable whose name is `PMUSER_CACHE_KEY_HOST` and whose value is `www.example.com`. Note the use of the `&&` operator, which allows for multiple conditions to be specified. |
+| `$.customOverride` | Returns all properties that have any custom override. |
+| `$.customOverride[?(@.overrideId=='cbo_123456789')]` | Returns all properties that have a custom override with the specified `overrideId`. |
+| `$..children[?(@.name == 'Restrict Access for Non-Production')]` | Returns all properties that have a child rule named `Restrict Access for Non-Production`. Swap out the child rule name as needed. |
+| `$..children[?(@.name == 'Restrict Access for Non-Production' && '/.well-known/acme-challenge/*' in @.criteria[0].options.values)]` | Returns all properties that have a child rule named `Restrict Access for Non-Production` and one of its first criterion's values is `/.well-known/acme-challenge/*`. |
+| `$..behaviors[?(@.name=='siteShield')].options.ssmap[?(@.value== 's123.akamai.net')]` | Returns all properties that have the `siteShield` behavior with an `ssmap` option whose value is `s123.akamai.net`. |
+| `$..behaviors[?(@.name=='edgeRedirector')].options[?(@.cloudletSharedPolicy==123456)]` | Returns all properties that have the `edgeRedirector` behavior with an option whose `cloudletSharedPolicy` is `123456`. Note: this is the format for Shared (v3) cloudlet policies |
+| `$..behaviors[?(@.name=='edgeRedirector')].options.cloudletPolicy[?(@.id==123456)]` | Returns all properties that have the `edgeRedirector` behavior with an option whose `cloudletPolicy` has an `id` of `123456`. Note: this is the format for non-shared (v2) cloudlet policies |
+| `$..behaviors[?(@.name=='advanced')].options[?(@.xml=~ /[\s\S]*my-tag[\s\S]*/i)]` | Returns all properties with an `advanced` behavior's contains `my-tag`. This can be used to search XML tag use across an account. |
