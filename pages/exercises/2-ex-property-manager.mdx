@@ -9,13 +9,13 @@ Create a new delivery property in any account using `New-Property`.
 
 > You will need to know a suitable `-GroupID` and `-ContractID` to use. You can find these values using `Get-Group` and `Get-Contract`. You will also need to provide a suitable `-ProductID`. You can find a list of available product IDs using `Get-Product`.
 
-{<h3>Add 2 Hostnames to your property</h3>}
+{<h3>Add two hostnames to your property</h3>}
 
 Using `Add-PropertyHostname`, add two hostnames to your property. You can use any hostnames you like, but they must be unique across all Akamai properties.
 
-> It is recommended to use `<your hostname>.edgesuite.net` hostnames directly, with `DEFAULT` as the `certProvisioningType`. This will auto-create your Edge Hostname and bypass Domain Validation.
+> It is recommended to use `<your hostname>.edgesuite.net` hostnames directly, with `DEFAULT` as the `certProvisioningType` (use the same value for `cnameFrom` and `cnameTo`). This will auto-create your Edge Hostname and bypass Domain Validation. 
 
-{<h3>Remove 1 hostname from your property</h3>}
+{<h3>Remove one hostname from your property</h3>}
 
 Delete either one of your hostnames from the property using `Remove-PropertyHostname`.
 
@@ -31,11 +31,11 @@ You can use a PSCustomObject, single JSON file or snippets as you wish. Save the
 
 {<h3>Activate to staging</h3>}
 
-Using `New-PropertyActivation` or its alias `Deploy-Property`, deploy the property to staging. You will need to provide a suitable `-NotifyEmails` value, which can be your own email address.
+Using `New-PropertyActivation` or its alias `Deploy-Property`, deploy the property to Staging. You will need to provide a suitable `-NotifyEmails` value, which can be your own email address.
 
 {<h3>Deactivate from staging and delete the property</h3>}
 
-Using `Disable-Property` deactivate the property from staging, and then delete it using `Remove-Property`. Remember you need to wait for your property to be fully deactivated before you can delete it, which typically takes about 15 minutes.
+Using `Disable-Property` deactivate the property from Staging, and then delete it using `Remove-Property`. Remember you need to wait for your property to be fully deactivated before you can delete it, which typically takes about 15 minutes.
 
 > You can check the progress of the deactivation with `Get-PropertyActivation`.
 
