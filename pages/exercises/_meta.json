@@ -1,5 +1,8 @@
 {
   "1-ex-get-command-get-help": {
     "title": "Get Command & Get Help"
+  },
+  "2-ex-property-manager": {
+    "title": "Property Manager"
   }
 }

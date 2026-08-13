@@ -1,0 +1,42 @@
+import { Steps } from 'nextra/components'
+
+# Exercise 2: Property Manager
+
+<Steps>
+{<h3>Create a Property</h3>}
+
+Create a new delivery property in any account using `New-Property`.
+
+> You will need to know a suitable `-GroupID` and `-ContractID` to use. You can find these values using `Get-Group` and `Get-Contract`. You will also need to provide a suitable `-ProductID`. You can find a list of available product IDs using `Get-Product`.
+
+{<h3>Add 2 Hostnames to your property</h3>}
+
+Using `Add-PropertyHostname`, add two hostnames to your property. You can use any hostnames you like, but they must be unique across all Akamai properties.
+
+> It is recommended to use `<your hostname>.edgesuite.net` hostnames directly, with `DEFAULT` as the `certProvisioningType`. This will auto-create your Edge Hostname and bypass Domain Validation.
+
+{<h3>Remove 1 hostname from your property</h3>}
+
+Delete either one of your hostnames from the property using `Remove-PropertyHostname`.
+
+{<h3>Update the rules</h3>}
+
+Pull the rules for your property using `Get-PropertyRules`, and update them such that they no longer contain errors. Typically, this involves setting the default origin hostname, the Enhanced Debug Key (or you could just remove the Enhanced Debug behavior altogether) and the default CP Code.
+
+You can use a PSCustomObject, single JSON file or snippets as you wish. Save the result of `Set-PropertyRules` to a variable so you can inspect any errors which remain. All errors must be removed before the next step.
+
+> Working with a PSCustomObject is typically quicker for small changes, but it requires some understanding of how to add and remove members from objects, which could be tricky. Using JSON may be simpler in the short term.
+
+> You do not need to create a CP Code. You can find a suitable one using `Get-CPCode`, or configure the CP Code behavior to use the new Default CP Code option. You can find an example of the format for this by configuring the behavior in the Property Manager UI.
+
+{<h3>Activate to staging</h3>}
+
+Using `New-PropertyActivation` or its alias `Deploy-Property`, deploy the property to staging. You will need to provide a suitable `-NotifyEmails` value, which can be your own email address.
+
+{<h3>Deactivate from staging and delete the property</h3>}
+
+Using `Disable-Property` deactivate the property from staging, and then delete it using `Remove-Property`. Remember you need to wait for your property to be fully deactivated before you can delete it, which typically takes about 15 minutes.
+
+> You can check the progress of the deactivation with `Get-PropertyActivation`.
+
+</Steps>
