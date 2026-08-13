@@ -1,1 +1,256 @@
 # Property Manager
+
+Property Manager is probably the most common app used by Akamai Professional Services, and is very well suited to automation with PowerShell.
+
+## Name expansion support
+
+One of the first things we did when designing the Akamai.Property module was to ensure that all commands support the `-PropertyName` parameter as an alternative to `-PropertyID`. Working with Property IDs is largely counter-intuitive, and adds additional steps you shouldn't need to care about. The Akamai.Property module allows you to use the property name instead of the property ID, and will automatically resolve the name to the correct ID for you.
+
+For example:
+
+```powershell
+Get-Property -PropertyName "my-property"
+
+accountId         : 1-1AB34C
+contractId        : 1-2AB34C
+groupId           : 123456
+propertyId        : 234567
+propertyName      : my-property
+latestVersion     : 131
+stagingVersion    : 131
+productionVersion : 131
+assetId           : 789456
+```
+
+When using `-PropertyName` you cannot also use `-PropertyID` in the same command. This is achieved by a PowerShell feature known as Parameter Sets, which allows you to define mutually exclusive parameters. This feature is used extensively in the Akamai PowerShell modules, and is a great way to make your commands more user-friendly.
+
+> Name expansion is handled by a call to the same endpoint used by `Find-Property` in the background, so it is marginally slower than using `-PropertyID`. However, if you enable the Akamai Data Cache with `Set-AkamaiOptions`, the result of the name resolution is cached in memory for the duration of your session.
+
+## Version expansion support
+
+In the same vein as name support, we also added support for more user-friendly version parameters. All commands which have a `-PropertyVersion` parameter can be used with an exact version number, but can also use the following values:
+
+| Parameter Value | Description |
+| --- | --- |
+| `latest` | The latest version of the property, regardless of whether it is active or not. |
+| `staging` | The version of the property active on the Staging network. |
+| `production` | The version of the property active on the Production network. |
+
+> Note: If you use `staging` or `production` and the property is not active on that network, you will receive an error.
+
+## Property CRUD Operations
+
+Standard CRUD (Create, Read, Update, Delete) operations are all supported by the Akamai Property Manager API, and therefore by the Akamai PowerShell modules. The following commands are available for each of these operations:
+
+| Operation | Command |
+| --- | --- |
+| Create | `New-Property` |
+| Read | `Get-Property` |
+| Update | `Set-Property` |
+| Delete | `Remove-Property` |
+| Clone | `Copy-Property` |
+
+We've also added in name support for `New-Property` when using the clone options (and `Copy-Property`, which uses the same endpoint), such that you can clone a property by its name rather than its ID, like this:
+
+```powershell
+New-Property -Name "my-new-property" -RuleFormat latest -ProductID Fresca -ClonePropertyName "my-golden-template" -ClonePropertyVersion latest -GroupID 123456 -ContractID 1-2AB34C
+```
+
+or
+
+```powershell
+Copy-Property -Name "my-new-property" -RuleFormat latest -ProductID Fresca -ClonePropertyName "my-golden-template" -ClonePropertyVersion latest -GroupID 123456 -ContractID 1-2AB34C
+```
+
+## Property Version Operations
+
+Unlike in IAC tools like Terraform, the Akamai.Property module operates at a per-API endpoint level, meaning you need to be able to manage versions manually, or in your scripts. The following commands are available for managing property versions:
+
+| Operation | Command |
+| --- | --- |
+| Create Version | `New-PropertyVersion` |
+| Get Version | `Get-PropertyVersion` |
+
+When creating a new version, you can also take advantage of version expansion for the `-CreateFromVersion` parameter, like this:
+
+```powershell
+New-PropertyVersion -PropertyName my-property -CreateFromVersion production
+```
+
+## Working with rules
+
+This is likely the area where you will spend the most time when dealing with Properties, and we've added in some options to the commands to make your life easier.
+
+Retrieving your property version rules can be achieved with `Get-PropertyRules`, which will output the rules in one of 3 formats.
+
+| Format | Description | Required parameters |
+| --- | --- | --- |
+| `PSCustomObject` | The default output format, which is a PowerShell object with the rules in a `rules` property. | None |
+| `Single JSON File` | Outputs the rules as a single JSON file which contains the entire property version. | `-OutputToFile`, `-OutputFileName` |
+| `JSON Snippets` | Outputs the rules as a series of JSON files, one for each rule in the property version. | `-OutputSnippets`, `-OutputDirectory` |
+
+Which format you choose to use is largely up to you. For example, if you want to make a small change directly in the shell (see below), then using a PSCustomObject is very simple. If you wanted to store your configuration in a git repo and allow for pull requests by multiple users, using snippets is likely the best option.
+
+### Editing rules as an object
+
+When using a PSCustomObject, you must assign the result of your `Get-PropertyRules` command to a variable, when you can then edit. The object has identical structure to the JSON format you can see in the UI, so the API response has a property called `rules`, which in turn has `children` and `behaviors` arrays, and child objects have `criteria`.
+
+Now, imagine we want to update the origin hostname in the default rule.
+
+```powershell
+$Rules = Get-PropertyRules -PropertyName my-property -PropertyVersion latest
+$Rules.rules.behaviors[0].origin.hostname = "new-origin.example.com"
+```
+
+Finding the exact rule which includes the behavior you want to update can be tricky (and may benefit from the bulk search API, see [here](pm-bulk-api.md)), but you can always filter the rules using `Where-Object` as needed. For example, let's say you are updating the CP Code used in the Augment Insights / Traffic Reporting rules. You could, if you are certain of their position, do this:
+
+```powershell
+$Rules.rules.children[0].children[0].behaviors[0].options.value.id = 123456
+```
+
+However, you may not know the exact position, so you could filter instead:
+
+```powershell
+$TrafficReportingRule = $Rules.rules.children | Where-Object name -eq "Traffic Reporting"
+$AugmentInsightsRule = $TrafficReportingRule.children | Where-Object name -eq "Augment Insights"
+$AugmentInsightsRule.behaviors[0].options.value.id = 123456
+```
+
+PowerShell uses object references, so even though we updated a variable named `$AugmentInsightsRule`, the original `$Rules` variable has also been updated. You can now use `Set-PropertyRules` to update the property version with your changes. This is also a good example of how to use the pipeline in PowerShell to chain together multiple commands and process data in a streamlined way.
+
+```powershell
+$Rules | Set-PropertyRules -PropertyName my-property -PropertyVersion latest
+```
+
+> Note that the format of the `Set-PropertyRules` command, when using the pipeline, is almost identical to the `Get-PropertyRules` command, except for literally 2 characters: `Get` becomes `Set`, `=` becomes `|`.
+
+### Editing rules as a single JSON file
+
+When using a single JSON file, you will typically first export the rules to a file, edit the file, and then import the changes back into the property version.
+
+```powershell
+Get-PropertyRules -PropertyName my-property -PropertyVersion latest -OutputFileName my-property-rules.json
+```
+
+> Note: As of version 3.0, the `-OutputToFile` parameter is inferred when using `-OutputFileName`, so you do not need to include it. If you use `-OutputToFile` without `-OutputFileName`, the file will be created with a default name of `<property-name>-<property-version>.json`.
+
+After editing the `my-property-rules.json` file, you can update the property version with:
+
+```powershell
+Set-PropertyRules -PropertyName my-property -PropertyVersion latest -InputFile my-property-rules.json
+```
+
+### Editing rules as JSON snippets
+
+When using JSON snippets, you will typically first export the rules to a directory, edit the files, and then import the changes back into the property version.
+
+```powershell
+Get-PropertyRules -PropertyName my-property -PropertyVersion latest -OutputDirectory my-property-rules
+```
+
+> Using the function in this way will create nested folders for rules and their children, rather than the larger, top-level JSON files created by the old Property CLI. You can configure exactly how deeply the rules are split into separate files with the `-MaxDepth` parameter, which defaults to one file per rule.
+
+> Note: As of version 3.0, the `-OutputSnippets` parameter is inferred when using `-OutputDirectory`, so you do not need to include it. If you use `-OutputSnippets` without `-OutputDirectory`, a directory will be created with the name of the property.
+
+Once the snippets are created, you can navigate into the created folder and locate your rule. For example, if you wanted to update the CP Code used in the Augment Insights / Traffic Reporting rule, you would navigate to the `Augment Insights` folder, then open `Traffic reporting.json`.
+
+Once the file/files are updated, you can update the property version with:
+
+```powershell
+Set-PropertyRules -PropertyName my-property -PropertyVersion latest -InputDirectory my-property
+```
+
+## Working with Hostnames
+
+All properties require hostnames, whether they are traditional or hostname bucket. The Akamai.Property module allows you to interact with hostnames in a variety of different ways.
+
+Firstly, you can list all hostnames in an entire account by using the `Get-PropertyHostname` command, so long as you omit the `-PropertyName` and `-PropertyID` parameters. This can also restricted to just production hostnames by using the `-Network PRODUCTION` parameter.
+
+```powershell
+$AllHostnames = Get-PropertyHostname -Network PRODUCTION
+```
+
+You can also use this command to retrieve the hostnames of your traditional property version only, like this:
+
+```powershell
+$PropertyHostnames = Get-PropertyHostname -PropertyName my-property -PropertyVersion latest
+```
+
+> When working with hostname buckets, use `Get-BucketHostname` instead.
+
+### Adding and removing hostnames
+
+Adding hostnames to a property can be achieved with `Add-PropertyHostname`, which requires an array of hashtables be sent, each containing `cnameFrom` (your delivery hostnames), `cnameTo` (the Edge Hostname) and `certProvisioningType` which must be either `CPS_MANAGED` for a CPS hostname, or `DEFAULT` for one whose certificate uses Default DV (nee Secure by Default). For example:
+
+```powershell
+Add-PropertyHostname -PropertyName my-property -PropertyVersion latest -NewHostnames @{cnameFrom = "www.example.com"; cnameTo = "www.example.com.edgekey.net"; certProvisioningType = "CPS_MANAGED"}, @{cnameFrom = "example.com"; cnameTo = "example.com.edgekey.net"; certProvisioningType = "DEFAULT"}
+```
+
+This is obviously quite a cumbersome command, so it is often better to define your hostnames separately (or splat the whole command) like this:
+
+```powershell
+$Hostnames = @(
+    @{cnameFrom = "www.example.com"; cnameTo = "www.example.com.edgekey.net"; certProvisioningType = "CPS_MANAGED"},
+    @{cnameFrom = "example.com"; cnameTo = "example.com.edgekey.net"; certProvisioningType = "DEFAULT"}
+)
+Add-PropertyHostname -PropertyName my-property -PropertyVersion latest -NewHostnames $Hostnames
+```
+
+You can also overwrite the entire group of hostnames (say when copying hostnames entirely from one property to another) using `Set-PropertyHostname`. For example:
+
+```powershell
+$Hostnames = Get-PropertyHostname -PropertyName my-property -PropertyVersion latest
+$Hostnames += $Hostnames[0] # Add a copy of the first hostname to the array
+$Hostnames[-1].cnameFrom = "new.example.com" # Change the cnameFrom of the new hostname
+$Hostnames | Set-PropertyHostname -PropertyName my-property -PropertyVersion latest
+```
+
+> Note the similarities in the Get-PropertyHostname and Set-PropertyHostname syntax. Much like with property rules commands above, the hostname functions have been deliberately designed to be as similar as possible.
+
+Removing hostnames is actually a whole lot simpler, as the command only requires the hostname itself to be removed, i.e. it does not require `cnameTo` or `certProvisioningType`. For example:
+
+```powershell
+Remove-PropertyHostname -PropertyName my-property -PropertyVersion latest -HostnamesToRemove "new.example.com"
+```
+You can also pipe the hostnames to remove to the function, like this:
+
+```powershell
+'api.example.com', 'new.example.com' | Remove-PropertyHostname -PropertyName my-property -PropertyVersion latest
+```
+
+## Activating your property
+
+Activating your property can be done very simply using the `New-PropertyActivation` command, or its alias `Deploy-Property`.
+
+Here is a simple example pushing to Staging:
+
+```powershell
+Deploy-Property -PropertyName my-property -PropertyVersion latest -Network Staging -NotifyEmails mail@example.com
+```
+
+> Note: The `-Network` parameter uses a validated set, so you can tab between the values without typing. This is true in almost all activation commands included in the Akamai PowerShell modules.
+
+If you wish to push to production, external users need only change the `-Network` parameter to `Production`, and optionally add a `-Note` parameter to describe the activation. Internal users, such as Akamai Professional Services, are required to provide a complianceRecord in the activation body, but this is made much simpler in PowerShell also. You can use this as an example, which uses splatting for ease of reading.
+
+> For more info on splatting, see the [Splatting](../appendices/splatting/) appendix.
+
+```powershell
+$ActivationParams = @{
+    PropertyName = 'my-property'
+    PropertyVersion = 'latest'
+    Network = 'Staging'
+    NotifyEmails = 'mail@example.com'
+    NoncomplianceReason = 'NONE'
+    PeerReviewedBy = 'user@akamai.com'
+    UnitTested = $true
+    CustomerEmail = 'user@customer.com'
+}
+
+Deploy-Property @ActivationParams
+```
+
+> If you are pushing a non-production property, you can change the `NoncomplianceReason` to `NO_PRODUCTION_TRAFFIC` and omit the `PeerReviewedBy`, `UnitTested` and `CustomerEmail` parameters. These are not required for non-production deployments.
+
+## Working with Includes
+
+If you are working with PM Includes, you can reuse all the Property commands above by simply prefixing the word `Property` in the command name with `Include`. For example, to get the rules for an Include, you would use `Get-PropertyIncludeRules`, and to update them you would use `Set-PropertyIncludeRules`. The same applies to all other commands, such as `New-PropertyInclude`, `Get-PropertyInclude`, `Remove-PropertyInclude`, etc.

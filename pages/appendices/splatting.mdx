@@ -57,3 +57,9 @@ New-Property @AuthParams @NewPropertyParams
 ```
 
 You can then reuse the same authentication parameters for multiple commands, without having to repeat them each time.
+
+## Using Intellisense
+
+Modern text editors, such as Visual Studio Code, support auto-filling fields based on the schema. If you use splatting in PowerShell, a good practice is to write the command first, referencing an empty hashtable, then go _back_ to the hashtable to fill in the values. You should then see suggestions for the parameter names, as VS Code will connect the command to the hashtable.
+
+![Start](/splatting.png)

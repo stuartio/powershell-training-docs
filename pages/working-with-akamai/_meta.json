@@ -16,5 +16,8 @@
   },
   "netstorage": {
     "title": "NetStorage"
+  },
+  "pm-bulk-api": {
+    "title": "Property Manager Bulk API"
   }
 }
