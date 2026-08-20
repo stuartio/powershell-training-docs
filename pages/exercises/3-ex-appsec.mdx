@@ -1,0 +1,59 @@
+import { Steps } from 'nextra/components'
+
+# Exercise 3: AppSec
+
+In this exercise you will create and configure an AppSec configuration. Just be sure not to activate your config, as this precludes it being deleted at the end.
+
+<Steps>
+{<h3>Create an AppSec Configuration</h3>}
+
+Create a new AppSec configuration in any account using `New-AppSecConfiguration`. You will need to know a `-GroupID` and `-ContractID` to use, just as we did with previous exercises.
+
+> The number of available AppSec configurations is contract limited, so look for an internal account with an adequate supply. Do not use customer accounts.
+
+{<h3>Add a hostname to your configuration</h3>}
+
+You should be able to add any hostname to your configuration, even if it is already protected by another config, so long as you don't activate. Again, just be sure not to use a live production hostname, and make sure to complete the exercise at the end and remove your configuration.
+
+You can add the hostname with `Add-AppSecConfigurationHostname`. See the section on hostnames in the AppSec guide here: [AppSec Hostnames](../working-with-akamai/app-and-api-protector#hostnames).
+
+{<h3>Create a new version of your config, based on version 1</h3>}
+
+The command you need is `New-AppSecConfigurationVersion`. Remember, when doing this for real you can use the version keywords, `latest`, `production` and `staging` for `-CreateFromVersion`, even though your new config only has a single version which is inactive.
+
+{<h3>Create a policy</h3>}
+
+Use any name you wish for a policy, but remember the `-PolicyPrefix` format should be exactly 4 characters and only include only letters and numbers. The function is `New-AppSecPolicy`.
+
+{<h3>Add a Match Target</h3>}
+
+Match Targets can have fairly complex bodies, so you can't create them as easily as you have done configurations and policies. Use the simplified template below and apply a match target to your config which links your hostname to your new policy.
+
+```json
+{
+  "type": "website",
+  "filePaths": [
+    "/*"
+  ],
+  "hostnames": [
+    "<your hostname>"
+],
+  "securityPolicy": {
+    "policyId": "<your policy ID>"
+  }
+}
+```
+
+> You can edit the json as a file, or as a string in the shell, or you could convert it to a PSCustomObject with `ConvertFrom-Json` and update the necessary elements that way.
+
+{<h3>Update 3 policy-level settings</h3>}
+
+Update the settings in 3 areas of your policy, such as Attack Group or Rule actions, Slow Post, Rapid Rules, Behavioral DDoS etc. Which options you choose to update is up to you, but remember that changes involving shared objects such as Custom Rules, Rate Policies or Reputation Profiles are not available in this config as we have not created any yet.
+
+{<h3>Delete your configuration</h3>}
+
+Since your configuration is not active, and has never been active, you can delete it with `Remove-AppSecConfiguration`. You need not delete any of the versions first, and if you have created a config version variable you can pipe this to the function if you wish.
+
+> Normally this step is impossible, as once a config has been activated to staging or production, it cannot be deleted, even if it has been deactivated. This is a limitation of the API, so there is nothing any client can do to work around it.
+
+</Steps>

@@ -319,6 +319,8 @@ $ConfigVersion | Get-AppSecPolicy
 $ConfigVersion | Get-AppSecRatePolicy
 ```
 
+> `Get-AppSecCustomRule` does not require a `-VersionNumber` parameter (we have no idea why), but it will work in the same way regardless. When piping an object PowerShell picks out the parameters it needs from the piped object, and ignores the rest. So, in this case, it will use the `-ConfigName` parameter from the piped object, and ignore the `-VersionNumber` parameter.
+
 The same holds true for policy-level commands, which can take a policy object as input. For example, let's say we retrieve a policy from our configuration:
 
 ```powershell
