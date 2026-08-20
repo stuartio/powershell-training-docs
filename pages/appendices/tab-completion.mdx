@@ -1,0 +1,48 @@
+# Tab Completion
+
+One of PowerShell's great strenghts is in the field of tab-completion, i.e. the ability of the shell to fill in the rest of a command name, parameter name, or even parameter values.
+
+However, depending on which operating system you use, and even the settings of your shell itself, the behavior of the tab key can differ. Below are the default behaviors on Windows and Mac/Linux, with a section at the bottom on how you can switch your shell between them as you prefer.
+
+## Windows
+
+| Scenario | First tab action | Second tab action |
+| --- | --- | --- |
+| Partially typed command name (for example: `Get-Prop<tab>`) | Completes to the first matching command, e.g. `Get-Property`. | Cycles to the next matching command, e.g. `Get-PropertyActivation`. |
+| Function name followed by hyphen only, with no characters afterwards, e.g. `Get-Property -<tab>` | Fills in the first parameter name in full., e.g. `Get-Property -PropertyName`. | Fills in the next parameter name, in the order in which they are defined in the function, `Get-Property -PropertyID`. |
+| Partially typed parameter name (for example: `Get-Property -E<tab>`) | Completes to the first matching parameter name, e.g. `Get-Property -EdgeRCFile`. | Cycles to the next matching parameter name, e.g. `Get-Property -ErrorAction`. |
+| Parameter value with known suggestions, e.g. `Deploy Property -Network <tab>` | Completes to the first suggested value, e.g. `Deploy-Property -Network Production`. | Cycles to the next suggested value, e.g. `Deploy-Property -Network Staging`. |
+| Tilde expansion, e.g. `~/<tab>` | Completes to the first matching file or folder in the users home directory, e.g. `C:\Users\bob\.akamai-cli`. | Cycles to the next matching file or folder in the user's home directory, e.g. `C:\Users\bob\.akamai-pwsh`. |
+
+## Mac / Linux
+
+Linux shells (which Macs come preinstalled with) have a long-standing tradition of tab-completion, so their version of PowerShell adopts the default unless you configure it otherwise. This is quite a different experience than on Windows.
+
+The primary difference is that on Windows a tab will always produce something, so long as it matches, and even if it matches multiple commands/parameters. On a Mac, if the tab matches multiple commands/parameters, the tab key will autocomplete as far as it can do, if possible at all, often resulting in a partial command on top of which you can keep typing and tabbing until you type enough to get the full, unique command name.
+
+For instance, if you were to type `Get-GTM<tab>` on a Mac, nothing will happen (except perhaps change the casing if you had typed `get-gtm`), other than a beep. This is because PowerShell cannot suggest a more specific command with this input. If you tab again, PowerShell will show you all the possible functions that begin with `Get-GTM`. If you were to then type `Get-GTMT<tab>`, PowerShell will expand that to `Get-GTMTrafficPer`. This is not actually command (though that is not really made clear) but in fact the prefix of two possible commands that your input matches, `Get-GTMTrafficPerDatacenter` and `Get-GTMTrafficPerProperty`. If you tab again you can see these two options.
+
+
+| Scenario | First tab action | Second tab action |
+| --- | --- | --- |
+| Partially typed command name which matches more than one command (for example: `Get-Pro<tab>`) | PowerShell will complete the function as far as it can, e.g. `Get-Property`. Note: this is not necessarily a full function name, though it can be. | Produces a table of all matching commands which begin with the expanded name, e.g. `Get-Property`. |
+| Function name followed by hyphen only, with no characters afterwards, e.g. `Get-Property -<tab>` | Nothing, though there may be a beep. | Displays a table of all parameters for this function, including built-in parameters such as `-ErrorAction`. |
+| Partially typed parameter name (for example: `Get-Property -E<tab>`) | Nothing, though there may be a beep. | Displays a table of all matching parameters, e.g. `EdgeRCFile    ErrorAction    ErrorVariable` |
+| Parameter value with known suggestions, e.g. `Deploy Property -Network <tab>` | Displays a table of all acceptable options, e.g. `Production    Staging` | Same as single tab action. |
+| Tilde expansion, e.g. `~/<tab>` | Nothing, though there may be a beep. | Displays a table of all files in the user's home directory. |
+
+## Changing your tab behavior
+
+If you wish to change the way tab works on either platform, you can do by using `Set-PSReadlineKeyHandler`. For example, to make tab behave like it does on Windows, you would run:
+
+```powershell
+Set-PSReadlineKeyHandler -Key Tab -Function TabCompleteNext
+```
+
+Alternatively, if you wanted to use the default Mac/Linux behavior, you would run:
+
+```powershell
+Set-PSReadlineKeyHandler -Key Tab -Function Complete
+```
+
+There are also other options for tab you can explore, such as `MenuComplete`, which will display a menu of all matching commands/parameters/values, and allow you to select one with the arrow keys. For more information, see the [PSReadline documentation](https://learn.microsoft.com/en-us/powershell/module/psreadline/?view=powershell-7.3).

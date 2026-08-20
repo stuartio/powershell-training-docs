@@ -1,0 +1,51 @@
+# Profiles
+
+PowerShell, just like `bash` and `zsh`, supports the concept of profiles, which are scripts that run when PowerShell starts. You can use profiles to customize your shell, for example by adding functions, aliases, or variables (both environment and regular) that you want to be available in every session.
+
+If you find yourself running the same command every time you open a session, it is usually a good candidate to be added to your profile. You can find the profile location with the built-in variable `$PROFILE`. For example, you can run the following command to see the location of your profile:
+
+```powershell
+$PROFILE
+
+C:\Users\smacleod\Documents\PowerShell\Microsoft.PowerShell_profile.ps1
+```
+
+You can open this file in any text editor and save, but remember that it will only be executed when you start a new session. If you want to run the profile in the current session, you can use the `.` operator to dot-source it:
+
+```powershell
+. $PROFILE
+```
+
+Some examples of things you might want to add to your profile for working with Akamai might include:
+
+- Pragma variables - Setting your preferred pragma header in a variable called $Pragma allows you to include it in `curl` or other web requests
+- Account switch key variables - You could create a script containing variables with the account switch keys of accounts you commonly work with, so you can include them by name in your commands, e.g. `Get-Contract -AccountSwitchKey $MyCustomer`.
+- Aliases - If you find yourself typing the same command over and over, you can create an alias for it. For example, you could create an alias for `Get-PropertyRules` called `gpr` so that you can type `gpr` instead of the full command name. This is done like this:
+
+```powershell
+Set-Alias gpr Get-PropertyRules
+```
+
+- Functions - Aliases are great if all you need to do is shorten a command name, but if you want to do something more complex, you can create a function. For instance, the Akamai.EdgeDiagnostics module has a command called `Find-IPAddress` which takes a single parameter, `-IPAddress`. If you find yourself using this command often, you could create a function called `ip` which takes a single parameter, and then calls `Find-IPAddress` with that parameter. This is done like this:
+
+```powershell
+function ip {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory, position = 0, ValueFromPipeline)]
+        [string]
+        $IPAddress
+    )
+    Find-IPAddress -IPAddress $IPAddress
+}
+```
+
+You can then run this command like this:
+
+```powershell
+ip 1.2.3.4
+
+executionStatus ipAddress geoLocation
+--------------- --------- -----------
+SUCCESS         1.2.3.4   @{countryCode=AU; regionCode=NSW; city=SYDNEY; latitude=-33.88; longitude=151.22; continent=…
+```

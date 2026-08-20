@@ -25,5 +25,14 @@
   },
   "parameter-sets": {
     "title": "Parameter Sets"
+  },
+  "working-with-json": {
+    "title": "Working with JSON"
+  },
+  "tab-completion": {
+    "title": "Tab Completion"
+  },
+  "profiles": {
+    "title": "Profiles"
   }
 }
