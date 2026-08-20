@@ -299,3 +299,55 @@ Any endpoint which lists only App & API Protector, specifically without the Adva
 Invoke-AkamaiRequest: HTTP 403 - Unauthorized Access/Action - Feature not available in this product. See $Error[0].exception.data for more
 information.
 ```
+
+## Advanced Piping
+
+In version 3.0 of the Akamai modules, we hugely expanded support for piped elements. This can hugely simplify the use of the many (many) commands in the AppSec module.
+
+> Note: this feature currently only supports `Get-` commands, for the most part. Other functions will have this feature added shortly.
+
+For example, for commands related to a configuration version, such as `Get-AppSecPolicy`, `Get-AppSecRatePolicy` and so on, you can pipe in a configuration version object, rather than specifying the `-ConfigName` and `-VersionNumber` parameters. For example, let's say we retrieve the latest version of a configuration:
+
+```powershell
+$ConfigVersion = Get-AppSecConfigurationVersion -ConfigName "MyConfig" -VersionNumber latest
+```
+
+We can then use that as the input to other commands, like this:
+
+```powershell
+$ConfigVersion | Get-AppSecPolicy
+$ConfigVersion | Get-AppSecRatePolicy
+```
+
+The same holds true for policy-level commands, which can take a policy object as input. For example, let's say we retrieve a policy from our configuration:
+
+```powershell
+$Policy = Get-AppSecPolicy -ConfigName "MyConfig" -VersionNumber latest -PolicyName "MyPolicy"
+```
+
+We can then run policy-level commands like this:
+
+```powershell
+$Policy | Get-AppSecPolicyAttackGroup
+$Policy | Get-AppSecPolicyRatePolicy
+```
+
+> Note: If you are also using authorization parameters, such as `-EdgeRCFile` or `-AccountSwitchKey`, you will need to include those in the piped command as well, since they are not part of the piped object. For example:
+
+```powershell
+$Policy | Get-AppSecPolicyAttackGroup -EdgeRCFile "path\to\.edgerc" -AccountSwitchKey "myAccountSwitchKey"
+$Policy | Get-AppSecPolicyRatePolicy -EdgeRCFile "path\to\.edgerc" -AccountSwitchKey "myAccountSwitchKey"
+```
+
+But, this could be made easier by the user of splatting, like this:
+
+```powershell
+$AuthParams = @{
+    EdgeRCFile = "path\to\.edgerc"
+    AccountSwitchKey = "myAccountSwitchKey"
+}
+$Policy | Get-AppSecPolicyAttackGroup @AuthParams
+$Policy | Get-AppSecPolicyRatePolicy @AuthParams
+```
+
+See our appendix on splatting here for more information on this feature: [Splatting](../appendices/splatting).
