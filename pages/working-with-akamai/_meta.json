@@ -5,11 +5,14 @@
   "app-and-api-protector": {
     "title": "App and API Protector"
   },
-  "edge-dns": {
-    "title": "Edge DNS"
-  },
   "edgeworkers": {
     "title": "EdgeWorkers"
+  },
+  "certificates": {
+    "title": "Certificates"
+  },
+  "edge-dns": {
+    "title": "Edge DNS"
   },
   "client-network-lists": {
     "title": "Client & Network Lists"

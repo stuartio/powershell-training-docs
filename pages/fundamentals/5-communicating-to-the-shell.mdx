@@ -21,7 +21,7 @@ This is the first line.
 This is the second line.
 ```
 
-> Note: Special characters like `n` (newline), `t` (tab), etc. only work in double-quoted strings. If you use single quotes, the characters will be treated as literal text and will not be interpreted.
+> Note: Special characters like `` `n`` (newline), `` `t`` (tab), etc. only work in double-quoted strings. If you use single quotes, the characters will be treated as literal text and will not be interpreted.
 
 Alternatively, you could simply use multiple `Write-Host` statements, which will each output a new line.
 
@@ -46,6 +46,7 @@ Write-Host ", you " -NoNewline
 Write-Host "killed my father" -ForegroundColor Yellow -NoNewline
 Write-Host ", prepare to " -NoNewline
 Write-Host "die!" -ForegroundColor Red
+```
 
 This is, as you can see, not an especially pleasant experience, but does not require a user to install any additional modules. If you are looking for something simpler you can use the `WriteColour` (or `WriteColor` if you are so inclined) module, which allows you to write a single string with multiple colours, and is available from the PowerShell Gallery. You can install it using:
 
