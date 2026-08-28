@@ -1,1 +1,319 @@
 # Edge DNS
+
+DNS is an often-overlooked element of the Akamai platform, but is critical to configuring and protecting web workloads. It is also an area which can heavily benefit from automation. We have confgured functions for all endpoints in the Edge DNS API in PowerShell, below is a summary of the most commonly used operations.
+
+## Working with zones
+
+Configuring zones in PowerShell is a straightforward matter, requiring different elements depending on the type of zone you are creating.
+
+
+### Retrieving zones
+
+Firstly, you can list zones with `Get-EDNSZone`, which also supports filtering the results at the API layer by contract ID, zone type or keyword.
+
+```powershell
+$PrimaryZones = Get-EDNSZone -ZoneType PRIMARY -ContractIds 1-2AB34C -Search "example.com"
+```
+
+Alternatively, you can pull a specific zone like this:
+
+```powershell
+$Zone = Get-EDNSZone -Zone example.com
+
+contractId            : 1-2AB34C
+zone                  : example.com
+category              : general
+type                  : PRIMARY
+endCustomerId         : 77777
+versionId             : 3ef9a6ec-3e36-4d62-b02b-47d1bf8c43fc
+lastActivationDate    : 20/04/2026 23:57:16
+lastModifiedDate      : 20/04/2026 23:56:17
+lastModifiedBy        : bob
+aliasCount            : 1
+activationState       : ACTIVE
+activationMessage     : Activation complete
+signAndServe          : True
+signAndServeAlgorithm : ECDSA_P256_SHA256
+subzoneGrants         : False
+```
+
+### Creating zones
+
+If you wish to create a zone, you need only provide the zone name, type, contract ID and group ID. You may also provide other elements, such as masters if your zone is secondary, or the algorith, keyname and secret for your zone's TSIG key. Below is an example of creating a primary zone in the simplest way possible.
+
+```powershell
+New-EDNSZone -Zone example.com -ZoneType PRIMARY -ContractId 1-2AB34C -GroupId 12345
+
+contractId       : 1-2AB34C
+zone             : example.com
+category         : general
+type             : PRIMARY
+versionId        : 0a4e0f1d-10a6-485d-95a7-92e365976330
+lastModifiedDate : 21/08/2026 21:26:53
+lastModifiedBy   : bob
+aliasCount       : 0
+activationState  : NEW
+signAndServe     : False
+subzoneGrants    : False
+```
+
+Note that this command will create a single zone with a single API call. If you need to create multiple zones, you could simply loop through calls to this function, but a faster approach might be to use `New-EDNSZoneBulkCreate`, which can create multiple zones in a single API call. However, this function requires a custom request body, so it is less user-friendly to configure.
+
+```json
+{
+  "zones": [
+    {
+      "comment": "My first zone",
+      "type": "PRIMARY",
+      "zone": "example.com"
+    },
+    {
+      "comment": "My second zone",
+      "type": "PRIMARY",
+      "zone": "example2.com"
+    }
+  ]
+}
+'
+```
+
+If speed is not a concern, it is likely easier to simply loop through calls to `New-EDNSZone` for each zone you wish to create.
+
+Something to be aware of is that when you create a new zone in this way (or with any other client) your zone is valid, but has no records of any kind. All zones require top-level NS records and an SOA record, which are **not** created automatically when you create a zone. You could create these manually, but there is a simple hack you can use to populate the records easily.
+
+```powershell
+New-EDNSChangeList -Zone example.com
+Submit-EDNSChangeList -Zone example.com
+```
+
+### Deleting zones
+
+You can delete one or more zones using `Remove-EDNSZone`, which uses the bulk zone delete endpoint natively, so there is no need to loop through calls to delete multiple zones. You can provide a single zone name, or an array of zone names, and the function will handle the rest.
+
+For instance, to delete a single zone, you can use the following command:
+
+```powershell
+Remove-EDNSZone -Zone "example.com"
+```
+
+You can also pipe the filtered result of `Get-EDNSZone` to `Remove-EDNSZone` to delete multiple zones at once. For example, to all zones whose name matches example.\<tld\> you could use the following:
+
+```powershell
+Get-EDNSZone | Where-Object zone -match ".*\.example\..*" | Remove-EDNSZone
+```
+
+## Working with records
+
+The most common operation you will likely undertake with Edge DNS is managaging records. We have added various features to make this as simple as possible, and to hide the sometimes complex request bodies required by the native API.
+
+### Retrieving records
+
+To retrieve records, you can use `Get-EDNSRecordSet`, which will return all record sets in a given zone. Alternatively, you can retrieve specific records for a given fqdn and type.
+
+> You can also list the record set types available in your zone by running `Get-EDNSRecordSetTypes`.
+
+The following command lists all record sets in the example.com zone:
+
+```powershell
+Get-EDNSRecordSet -Zone "example.com"
+
+name                            type   ttl rdata
+----                            ----   --- -----
+example.com               NS    86400 {a9-64.akam.net., a1-91.akam.net., a20-65.akam.net., a13-64.akam.net.…}
+example.com               SOA   86400 {a1-91.akam.net. hostmaster.example.com. 2024032728 3600 600 604800 300}
+example.com               TXT   60    {"PWSH" "Test"}
+www.example.com           CNAME 3600  {www.example.com.edgekey.net.}
+api.example.com           A     120   {1.2.3.4}
+```
+
+This command retrieves a specific record from your zone.
+
+```powershell
+Get-EDNSRecordSet -Zone "example.com" -Name "www.example.com" -Type CNAME
+
+name                  type  ttl rdata
+----                  ----  --- -----
+www.example.com       CNAME 300 {www.example.com.edgesuite.net.}
+```
+
+> Note: The `-Name` parameter requires the fully qualified domain name (FQDN) of the record you wish to retrieve, which includes the zone name. There is a change included in version 3.1 of the Akamai.EdgeDNS module which will allow you to only provide the record name, without retyping the zone.
+
+### Creating records
+
+You can create records using `New-EDNSRecordSet`, like this:
+
+```powershell
+New-EDNSRecordSet -Zone "example.com" -Name "www.example.com" -Type CNAME -TTL 120 -Rdata "www.example.com.edgekey.net"
+```
+
+The endpoint this function uses also supports creating multiple records at once, so just like when creating zones you are offered a few options when creating multiple records. First, you could simply call `New-EDNSRecordSet` in a loop. This would work fine, but does not scale well, especially if you need to create hundreds or even thousands of records. A better approach would be to use the `-Body` parameter and construct a request body directly. For example, this JSON block can be used to create 2 records in a single API call:
+
+```json
+{
+  "recordsets": [
+    {
+      "name": "one.example.com",
+      "rdata": [
+        "www.example.com"
+      ],
+      "ttl": 300,
+      "type": "CNAME"
+    },
+    {
+      "name": "two.example.com",
+      "rdata": [
+        "1.2.3.4"
+      ],
+      "ttl": 300,
+      "type": "A"
+    }
+  ]
+}
+```
+
+Or, if you prefer, you could do it with PowerShell objects, like this:
+
+```powershell
+$Body = @{
+    recordsets = @(
+        @{
+            name = "one.example.com"
+            rdata = @("www.example.com")
+            ttl = 300
+            type = "CNAME"
+        },
+        @{
+            name = "two.example.com"
+            rdata = @("1.2.3.4")
+            ttl = 300
+            type = "A"
+        }
+    )
+}
+```
+
+> An even better approach would be to create a CSV file using Excel or similar, with columns for name, rdata, ttl and type, then constructing your request body from that data. For example:
+
+```powershell
+$Records = Import-Csv "records.csv"
+$Body = @{
+    recordsets = $Records
+}
+$Body | New-EDNSRecordSet -Zone "example.com"
+```
+
+Something worth noting is how you could go about creating a record set with multiple Rdata values. RData in a record set is an array, after all, but in the above examples we have been focussing on single-entry records. Below is an example of creating a record set with multiple Rdata values, which is useful for creating MX records, for example.
+
+```powershell
+New-EDNSRecordSet -Zone "example.com" -Name "mail.example.com" -Type MX -TTL 300 -Rdata "10 mail1.example.com.", "20 mail2.example.com."
+```
+
+Note that the `-RData` parameter accepts an array of strings, so you can provide as many Rdata values as you need, sepatated on the command line with commas. Or you could define an array in a variable and pass that to the `-RData` parameter, like this:
+
+```powershell
+$Rdata = @(
+    "10 mail1.example.com."
+    "20 mail2.example.com."
+)
+New-EDNSRecordSet -Zone "example.com" -Name "mail.example.com" -Type MX -TTL 300 -Rdata $Rdata
+```
+
+### Updating records
+
+How you update records depends on how many records you need to update in a single call. Updating a single record can be done like this:
+
+```powershell
+Set-EDNSRecordSet -Zone "example.com" -Name "www.example.com" -Type CNAME -TTL 120 -Rdata "www.example.com.edgekey.net"
+```
+
+Or, you could retrieve the record, update what needs updating, then pipe the result.
+
+```powershell
+$Record = Get-EDNSRecordSet -Zone "example.com" -Name "www.example.com" -Type CNAME
+$Record.ttl = 300
+$Record | Set-EDNSRecordSet -Zone "example.com"
+```
+
+If you wish to update more than one record, there exists a risk as the associated API endpoint will replace _all_ records in a zone with those that you send, in the same way that updating a property version replaces the whole version. If, therefore, you wish to update multiple records, but _not_ the whole zone, then you must loop calls to `Set-EDNSRecordSet`, like this:
+
+```powershell
+$Records = Get-EDNSRecordSet -Zone "example.com" | Where-Object type -eq "CNAME"
+foreach ($Record in $Records) {
+    $Record.ttl = 300
+    $Record | Set-EDNSRecordSet -Zone "example.com"
+}
+```
+
+On the other hand, if you wish to update more than one record in a single call, you must use the -Body parameter.
+
+> The function will inspect your request body. If your body contains a single record set, it will use the API endpoint to replace just that record. If there is more than one record set, it will use the endpoint which replaces all records.
+
+```powershell
+$Body = @{
+    recordsets = @(
+        @{
+            name = "www.example.com"
+            rdata = @("www.example.com.edgekey.net.")
+            ttl = 300
+            type = "CNAME"
+        },
+        @{
+            name = "api.example.com"
+            rdata = @("api.example.com.edgekey.net.")
+            ttl = 300
+            type = "CNAME"
+        }
+    )
+}
+$Body | Set-EDNSRecordSet -Zone "example.com"
+```
+
+Now, while the above command is syntactically correct, remember that no zone would ever just have two CNAME records, it would be invalid. All zones have top-level NS records, and an SOA record, for example. In this case, it is more common to pull all records from your zone, update as needed, then push back.
+
+```powershell
+$Records = Get-EDNSRecordSet -Zone "example.com"
+$Records | Where-Object type -eq "CNAME" | ForEach-Object {
+    $_.ttl = 300
+}
+$Records | Set-EDNSRecordSet -Zone "example.com"
+```
+
+Again, this is correct, but it needs one final tweak. When you update all records in a zone, you must increment the serial number contained within the zone's SOA record (this is how downstream clients become aware that something has changed). You could do this yourself in code, but it is likely easier to use the provided `-AutoIncrementSOA` switch, which will automatically increment the serial number for you.
+
+```powershell
+$Records | Set-EDNSRecordSet -Zone "example.com" -AutoIncrementSOA
+```
+
+> You can also replace all records from a master zone file, which is common when importing from another CDN or DNS provider. For this use `Set-EDNSMasterFile`.
+
+## Working with change lists
+
+The record set commands you saw above operate in such a way that when you submit the command the changes are pushed immediately (minus the minute or two for propagation). However, when using the UI you would instead see the concept of a change list. This is a list of all your changes which you can see in one view, then decide to submit or abandon all at once. If this is preferable, you can also do this in PowerShell.
+
+Creating a change list takes no parameters other than the zone name, and returns nothing.
+
+```powershell
+New-EDNSChangeList -Zone "example.com"
+```
+
+You can then add, update or remove records using `Set-EDNSChangeListRecordSet`, which takes in a single record as well as the `-Op` parameter (`ADD`, 'EDIT` or `DELETE`) to indicate what you wish to do with the record.
+
+```powershell
+Set-EDNSChangeListRecordSet -Zone "example.com" -Op ADD -Name "www.example.com" -Type CNAME -TTL 300 -Rdata "www.example.com.edgekey.net"
+Set-EDNSChangeListRecordSet -Zone "example.com" -Op EDIT -Name "api.example.com" -Type A -TTL 600 -Rdata "1.2.3.4"
+Set-EDNSChangeListRecordSet -Zone "example.com" -Op DELETE -Name "search.example.com" -Type A
+```
+
+> There is no endpoint (as far as I know) to remove a record set from a change list, as opposed to removing the record set from the zone, as part of the change. So if you add a record to a change list in error, you must delete the change list and start over.
+
+Once your change list complete, you can submit it
+
+```powershell
+Submit-EDNSChangeList -Zone "example.com" -Comment "Yeehah!"
+```
+
+Or abandon it
+
+```powershell
+Remove-EDNSChangeList -Zone "example.com"
+```
