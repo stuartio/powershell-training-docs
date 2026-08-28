@@ -73,7 +73,7 @@ $Enrollment = Get-CPSEnrollment -EnrollmentId 123456
 $Enrollment.csr.cn = "new.example.com"
 $Enrollment.csr.sans = @("new.example.com")
 
-$Enrollment | New-CPSEnrollment
+$Enrollment | New-CPSEnrollment -ContractID 1-2AB34C
 ```
 
 > Note: the above command assumes that only the CSR and SANs would differ between your reference certificate and the new one. This is valid, but somewhat simplified. There are many, many other options you might change.
@@ -133,11 +133,57 @@ There are various CPS states which require interaction. Most common would be ret
 
 | Change Type | Command |
 | --- | --- |
-| Retrieve third party CSR | `Get-CPSCSR` |
-| Upload third party signed certificate | `Add-CPSThirdPartyCert` |
-| Retrieve Lets Encrypt challenges for DV enrollments | `Get-CPSLetsEncryptChallenges` |
-| Instruct CPS that LE challenges are in place | `Confirm-CPSLetsEncryptChallengesCompleted` |
-| Retrieve pre-verification warnings | `Get-CPSPreVerificationWarnings` |
-| Acknowledge pre-verification warnings | `Confirm-CPSPreVerificationWarnings` |
-| Retrieve post-verification warnings | `Get-CPSPostVerificationWarnings` |
-| Acknowledge post-verification warnings | `Confirm-CPSPostVerificationWarnings` |
+| Promote a certificate from staging to production when your enrollment has 'Always test on staging' enabled. | `Complete-CPSChange` |
+| Retrieve third party CSR. | `Get-CPSCSR` |
+| Upload third party signed certificate. | `Add-CPSThirdPartyCert` |
+| Retrieve Lets Encrypt challenges for DV enrollments. | `Get-CPSLetsEncryptChallenges` |
+| Instruct CPS that LE challenges are in place. | `Confirm-CPSLetsEncryptChallengesCompleted` |
+| Retrieve pre-verification warning.s | `Get-CPSPreVerificationWarnings` |
+| Acknowledge pre-verification warnings. | `Confirm-CPSPreVerificationWarnings` |
+| Retrieve post-verification warnings. | `Get-CPSPostVerificationWarnings` |
+| Acknowledge post-verification warnings. | `Confirm-CPSPostVerificationWarnings` |
+| Schedule a timed deployment of a change. | `Set-CPSDeploymentSchedule` |
+| Get the schedule for a timed deployment. | `Get-CPSDeploymentSchedule` |
+
+Most of these changes in some way require a `-ChangeID` parameter. There is no API endpoint to list active changes, you can instead find them in the `pendingChanges` property of the enrollment object. You can also retrieve the status of a specific change by its ID, like this:
+
+```powershell
+Get-CPSChangeStatus -EnrollmentId 123456 -ChangeId 2345678
+```
+
+As way of an example, let's say you haved created a third party enrollment (we'll skip the creation part for brevity).
+
+First, we retrieve the enrollment and hold it in a variable.
+
+```powershell
+$Enrollment = Get-CPSEnrollment | Where-Object { $_.csr.cn -eq "www.example.com" }
+```
+
+Next we need to set it not to proceed to production without approval.
+
+```powershell
+$Enrollment.changeManagement = $true
+$Enrollment | Set-CPSEnrollment
+```
+
+Then, we need to retrieve the CSR for the third party CA to sign.
+
+```powershell
+$CSR = Get-CPSCSR -EnrollmentId $Enrollment.id -ChangeId $Enrollment.pendingChanges[0].changeId
+$CSR.csrs | Where-Object keyAlgorithm -eq 'RSA' | Select-Object -ExpandProperty csr | Out-File "www.example.com.rsa.csr"
+$CSR.csrs | Where-Object keyAlgorithm -eq 'ECDSA' | Select-Object -ExpandProperty csr | Out-File "www.example.com.ecdsa.csr"
+```
+
+Next, once you have retrieved the signed certificate from your CA, you would save them into files in your directory. Those files can then be read into strings as part of the `Add-CPSThirdPartyCert` command, like this:
+
+```powershell
+$Cert = Get-Content .\www.example.com.crt -Raw
+$Chain = Get-Content .\www.example.com.chain.crt -Raw
+Add-CPSThirdPartyCert -EnrollmentId $Enrollment.id -ChangeId $Enrollment.pendingChanges[0].changeId -Certificate $Cert -TrustChain $Chain
+```
+
+This should kick off the process to get your cert as far as the staging network, as we configured. Then, you would test the cert works as expected, and finally promote it to production, like this:
+
+```powershell
+Complete-CPSChange -EnrollmentId $Enrollment.id -ChangeId $Enrollment.pendingChanges[0].changeId
+```
