@@ -11,6 +11,9 @@
   "certificates": {
     "title": "Certificates"
   },
+  "cps": {
+    "title": "CPS"
+  },
   "edge-dns": {
     "title": "Edge DNS"
   },

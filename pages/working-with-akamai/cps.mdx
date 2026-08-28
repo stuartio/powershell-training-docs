@@ -1,0 +1,143 @@
+# CPS
+
+The CPS API has been around for a long time and is the most common interface customers use to interact with certificates. The API itself, and by extension the PowerShell module, has support for DV, OV and EV certificates, even though the Akamai Terraform provider only supports DV. As such, PowerShell is often considered for interacting with OV or EV certificates, pushing changes to existing enrollments, or for auditing purposes.
+
+## Enrollments
+
+In CPS, the most common object you interact with is the enrollment.
+
+### Retrieving Enrollments
+
+You can list enrollments like this:
+
+```powershell
+$Enrollments = Get-CPSEnrollment
+```
+
+You could also use this function to perform certificate auditing. For example, if you wanted to find only those enrollments which are SNI-only, and display just the ID, common name, and network (Standard TLS vs Enhanced TLS), you could do this:
+
+```powershell
+Get-CPSEnrollment | Where-Object { $_.networkConfiguration.sniOnly -eq $true } | Select-Object id, @{Name="CN";Expression={$_.csr.cn}}, @{Name="Network";Expression={$_.networkConfiguration.secureNetwork}}
+```
+
+Typically, you would simply want to filter your list of enrollments to find a specific one by its common name, like this:
+
+```powershell
+$Enrollment = Get-CPSEnrollment | Where-Object { $_.csr.cn -eq "www.example.com" }
+```
+
+Alternatively, the same command can also be used to retrieve a single enrollment by its ID, if known:
+
+```powershell
+$Enrollment = Get-CPSEnrollment -EnrollmentId 123456
+$Enrollment
+
+id                             : 12345
+productionSlots                : {30000}
+stagingSlots                   : {30000}
+assignedSlots                  : {30000}
+location                       : /cps/v2/enrollments/12345
+ra                             : lets-encrypt
+validationType                 : dv
+certificateType                : san
+certificateChainType           : default
+networkConfiguration           : @{geography=core; secureNetwork=standard-tls; mustHaveCiphers=ak-akamai-2018q3; preferredCiphers=ak-akamai-2018q3;
+                                 fipsMode=False; disallowedTlsVersions=System.Object[]; sniOnly=True; quicEnabled=False; dnsNameSettings=; ocspStapling=on;
+                                 clientMutualAuthentication=}
+signatureAlgorithm             : SHA-256
+changeManagement               : False
+csr                            : @{cn=www.example.com; c=GB; st=London; l=London; o=Akamai; ou=; sans=System.Object[]; preferredTrustChain=}
+org                            : @{name=Akamai; addressLineOne=7 Air St; addressLineTwo=; city=London; region=London; postalCode=W1B5AD; country=GB;
+                                 phone=+44800800800}
+orgId                          :
+adminContact                   : @{firstName=Bob; lastName=Loblaw; phone=+44 203 800 800; email=bob@loblaws.com; addressLineOne=;
+                                 addressLineTwo=; city=; country=; organizationName=; postalCode=; region=; title=}
+techContact                    : @{firstName=Tom; lastName=Leighton; phone=+44 203 800 800; email=tomleighton@akamai.com; addressLineOne=; addressLineTwo=;
+                                 city=; country=; organizationName=; postalCode=; region=; title=}
+thirdParty                     :
+enableMultiStackedCertificates : False
+autoRenewalStartTime           :
+pendingChanges                 : {@{location=/cps/v2/enrollments/12345/changes/2345678; changeType=renewal; changeId=9144360}}
+maxAllowedSanNames             : 100
+maxAllowedWildcardSanNames     : 25
+```
+
+> The CPS API uses a versioned object model approach, which means that depending on the request headers you send, the object you receive may be different. More details can be found [here](https://techdocs.akamai.com/cps/reference/internal-versioning), but when using PowerShell we always default to the latest version, so you shouldn't need to worry about it.
+
+### Creating Enrollments
+
+As you can see, there are a lot of settings inside this object, which makes creating enrollments difficult. There are no user-friendly parameters for `New-CPSEnrollment`, purely because there are too many options and they are too complex, so typically we recommend finding a comparable enrollment (evenb on another account), exporting that either to JSON or a PSCustomObject, editing then pushing to the New endpoint. Like this:
+
+```powershell
+$Enrollment = Get-CPSEnrollment -EnrollmentId 123456
+$Enrollment.csr.cn = "new.example.com"
+$Enrollment.csr.sans = @("new.example.com")
+
+$Enrollment | New-CPSEnrollment
+```
+
+> Note: the above command assumes that only the CSR and SANs would differ between your reference certificate and the new one. This is valid, but somewhat simplified. There are many, many other options you might change.
+
+### Updating Enrollments
+
+Similar to how we create enrollments, updating enrollments is a pretty simple matter with PowerShell. You can do this generally either with the returned PSCustomObject, which is best for straightforward changes, or with a JSON file if you need a more wholistic view. Let's say you wanted to add a SAN to an existing enrollment, you could do this:
+
+```powershell
+$Enrollment = Get-CPSEnrollment -EnrollmentId 123456
+$Enrollment.csr.sans += "new-san.example.com"
+$Enrollment | Set-CPSEnrollment
+```
+
+Alternatively, in JSON:
+
+```powershell
+Get-CPSEnrollment -EnrollmentId 123456 | ConvertTo-Json -Depth 10 | Out-File "Enrollment.json"
+```
+
+Then edit the JSON file to add the new SAN, and then push it back:
+
+```powershell
+Set-CPSEnrollment -EnrollmentId 123456 -Body (Get-Content .\Enrollment.json -Raw)
+```
+
+> When using the pipeline, the `-EnrollmentID` parameter gets its data from the piped object. When using `-Body`, either with JSON data or PSCustomObject, you must provide it with the `-EnrollmentID` parameter.
+
+This command can often fail, specifically if the enrollment has pending changes, which you can see in the enrollment object. If this is the case, and you wish to update the enrollment anyway, you must add the `-AllowCancelPendingChanges` parameter.
+
+### Deleting Enrollments
+
+Deleting an enrollment is a simple matter of using the `Remove-CPSEnrollment` command, like this:
+
+```powershell
+Remove-CPSEnrollment -EnrollmentId 123456
+```
+
+Or, more commonly, you would have retrieved your enrollment first, then piped it to the `Remove-CPSEnrollment` command, like this:
+
+```powershell
+$Enrollment = Get-CPSEnrollment | Where-Object { $_.csr.cn -eq "www.example.com" }
+$Enrollment | Remove-CPSEnrollment
+```
+
+or even
+
+```powershell
+Get-CPSEnrollment | Where-Object { $_.csr.cn -eq "www.example.com" } | Remove-CPSEnrollment
+```
+
+> The above scenario with `-AllowCancelPendingChanges` also applies to deleting enrollments. If you have pending changes, you must use that parameter to delete the enrollment.
+
+## Working with changes
+
+There are various CPS states which require interaction. Most common would be retrieving a CSR for a Third Party enrollment, and uploading its reciprocal signed certificate, but there are several others you can see below.
+
+| Change Type | Command |
+| --- | --- |
+| Retrieve third party CSR | `Get-CPSCSR` |
+| Upload third party signed certificate | `Add-CPSThirdPartyCert` |
+| Retrieve Lets Encrypt challenges for DV enrollments | `Get-CPSLetsEncryptChallenges` |
+| Instruct CPS that LE challenges are in place | `Confirm-CPSLetsEncryptChallengesCompleted` |
+| Retrieve pre-verification warnings | `Get-CPSPreVerificationWarnings` |
+| Acknowledge pre-verification warnings | `Confirm-CPSPreVerificationWarnings` |
+| Retrieve post-verification warnings | `Get-CPSPostVerificationWarnings` |
+| Acknowledge post-verification warnings | `Confirm-CPSPostVerificationWarnings` |
