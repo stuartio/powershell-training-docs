@@ -1,0 +1,211 @@
+# Cloud Certificate Manager
+
+Cloud Certificate Manager is the planned replacement for CPS, and is currently in the beta phase. Its functionality is limited compared to its predecessor, but the currently available API endpoints are supported in PowerShell.
+
+## Installation
+
+The CCM sub-module is not publicly available, due to the beta status. To install it you must access the Download Center inside Akamai Control Center, from an account which has CCM included in one of its contracts.
+
+The direct link is here - https://control.akamai.com/apps/download-center/#/products/24;name=Scope-of-Integrations . Expand the PowerShell Submodules section and you should see all the submodules to which your account is entitled.
+
+## Usage
+
+The CCM sub-module, at present, only supports third-party certificates, and its 7 functions are largely centered around CRUD operations for certificates.
+
+| Function | Description |
+| --- | --- |
+| Get-CCMCertificate | List all CCM certificatess, or retrieve a specific certificate by its ID. |
+| New-CCMCertificate | Create a certificate. |
+| Remove-CCMCertificate | Delete a certificate. |
+| Rename-CCMCertificate | Rename a certificate. |
+| Set-CCMCertificate | Update a certificate. |
+| Add-CCMSignedCertificate | Add a signed certificate to an existing certificate. |
+| Get-CCMBinding | List a certificate's hostname bindings. |
+
+## Creating certs
+
+Unlike the CPS submodule, due to its huge number of options, `New-CCMCertificate` can create certificates using inline parameters for all relevant options. For example:
+
+```powershell
+$CreationParams = @{
+    CertificateName = "My Certificate"
+    ContractID      = "1-2AB34C"
+    GroupID         = 123456
+    CommonName      = 'www.example.com'
+    Country         = 'US'
+    Locality        = 'Oceanside'
+    Organization    = 'Akamai Technologies'
+    State           = 'CA'
+    KeySize         = '2048'
+    KeyType         = 'RSA'
+    SANs            = 'www.example.com', 'example.com'
+    SecureNetwork   = 'ENHANCED_TLS'
+}
+$Cert = New-CCMCertificate @CreationParams
+$Cert
+
+accountId         : 1-1AA11A
+certificateId     : 1234
+certificateName   : My Certificate
+certificateStatus : CSR_READY
+certificateType   : THIRD_PARTY
+contractId        : 1-2AB34C
+createdBy         : smacleod
+createdDate       : 01/09/2026 16:53:11
+csrExpirationDate : 03/11/2027 16:53:13
+csrPem            : -----BEGIN CERTIFICATE REQUEST-----
+                    MIIBazCCARECAQAwdDELMAkGA1UEBhMCVVMxHDAaBgNVBAoME0FrYW1haSBUZWNo
+                    bm9sb2dpZXMxCzAJBgNVBAgMAkNBMRIwEAYDVQQHDAlPY2VhbnNpZGUxJjAkBgNV
+                    BAMMHXd3dy5leGFtcGxlLnN0dWFydG1hY2xlb2QubmV0MFkwEwYHKoZIzj0CAQYI
+                    KoZIzj0DAQcDQgAEGCZH8hgC5S1JQLp9ieUo0iqRLpFZK5JsEK8aeVbuEt3Qe5Ed
+                    ay71qqCxWBsMD/wNOy1wTJFEL13jkrJwihFnoqA7MDkGCSqGSIb3DQEJDjEsMCow
+                    KAYDVR0RBCEwH4Idd3d3LmV4YW1wbGUuc3R1YXJ0bWFjbGVvZC5uZXQwCgYIKoZI
+                    zj0EAwIDSAAwRQIgCgS1412svD+BBH8MGVWxTMDIcs7IXbHVgFPq6AGPK2wCIQCr
+                    WThjOXi3GcIvZxpZ2EROHspGPUZya6fO2GEC69+Bkw==
+                    -----END CERTIFICATE REQUEST-----
+
+geoClass          : STANDARD_WORLDWIDE
+keySize           : 2048
+keyType           : RSA
+modifiedBy        : smacleod
+modifiedDate      : 01/09/2026 16:53:11
+sans              : {www.example.com, example.com}
+secureNetwork     : ENHANCED_TLS
+subject           : @{commonName=www.example.com; country=US; locality=Oceanside; organization=Akamai
+                    Technologies; state=CA}
+```
+
+> This command uses splatting. For more info (see here)[../appendices/splatting.mdx].
+
+You can also use a JSON body if you prefer, which is useful if you need to use a request body option not covered by the function parameters.
+
+```powershell
+$CreationBody = '{
+    "certificateName": "My Certificate",
+    "subject": {
+        "commonName":   "www.example.com",
+        "country":      "US",
+        "locality":     "Oceanside",
+        "organization": "Akamai Technologies",
+        "state":        "CA"
+    },
+    "keySize":         "2048",
+    "keyType":         "RSA",
+    "sans":            [
+        "www.example.com",
+        "example.com"
+    ],
+    "secureNetwork":   "ENHANCED_TLS"
+}'
+$Cert = New-CCMCertificate -Body $CreationBody
+```
+
+> It is always a good idea to assign the result of any command to a variable, so you can reuse the data later. As you can see above, quite a lot of info is returned when creating a certificate, including the CSR PEM, which you will need to submit to your CA.
+
+## Updating certs
+
+Once your certificate object is created, you must have it signed by a third party CA. This is beyond the scope of what we are talking about here, but for testing purposes you can search online for openssl commands you can use to create a self-signed certificate from the CSR PEM. Once you have your signed certificate, you can add it to the existing certificate object using `Add-CCMSignedCertificate`.
+
+First, let's say you have retrieved your certificate as a PEM-encoded text file named `cert.pem`, and your trust chain in the same format in a file called `chain.pem`. You can use the following commands to read them into variables, and then add them to your certificate object.
+
+```powershell
+Add-CCMSignedCertificate -CertificateId $Cert.certificateId -CertificatePEM 'cert.pem' -TrustChainPEM 'chain.pem' -AcknowledgeWarnings
+
+accountId                           : 1-1AA11A
+certificateId                       : 1234
+certificateName                     : My Certificate
+certificateStatus                   : READY_FOR_USE
+certificateType                     : THIRD_PARTY
+contractId                          : 1-2AB34C
+createdBy                           : smacleod
+createdDate                         : 01/09/2026 17:07:49
+csrExpirationDate                   : 03/11/2027 17:07:51
+csrPem                              : -----BEGIN CERTIFICATE REQUEST-----
+                                      MIIC9DCCAdwCAQAwdDELMAkGA1UEBhMCVVMxHDAaBgNVBAoME0FrYW1haSBUZWNo
+                                      ...
+                                      jKSmhI/5gXqLVUHmRG4XiAFT1Q98BSetLlno0gGZRxGKGyCOstxq2A==
+                                      -----END CERTIFICATE REQUEST-----
+
+geoClass                            : STANDARD_WORLDWIDE
+keySize                             : 2048
+keyType                             : RSA
+modifiedBy                          : smacleod
+modifiedDate                        : 01/09/2026 17:16:06
+sans                                : {www.example.com, example.com}
+secureNetwork                       : ENHANCED_TLS
+signedCertificateIssuer             : CN=CCM Test CA,OU=IT,O=MyCompany,L=Oceanside,ST=California,C=US
+signedCertificateNotValidAfterDate  : 31/08/2028 17:15:58
+signedCertificateNotValidBeforeDate : 01/09/2026 17:15:58
+signedCertificatePem                : -----BEGIN CERTIFICATE-----
+                                      MIIE1DCCArygAwIBAgIUBUKiWrfZ2sC/B2iU+qsuBGiPtFcwDQYJKoZIhvcNAQEL
+                                      ...
+                                      oPkj3BSymUYAMqqVOwSCZ+xpnCTv/wHz3WSB1ww+KDL/HYVSvAFJbg==
+                                      -----END CERTIFICATE-----
+
+signedCertificateSHA256Fingerprint  : 0D:24:E6:AD:91:59:34:A6:D2:E2:90:62:AE:6C:FE:15:3A:12:84:D8:B8:E6:F1:D2:2D:27:3B:
+                                      AA:83:A2:E3:F2
+signedCertificateSerialNumber       : 05:42:a2:5a:b7:d9:da:c0:bf:07:68:94:fa:ab:2e:04:68:8f:b4:57
+subject                             : @{commonName=www.example.com; country=US; locality=Oceanside;
+                                      organization=Akamai Technologies; state=CA}
+trustChainPem                       : -----BEGIN CERTIFICATE-----
+                                      MIIFmjCCA4KgAwIBAgIUCRSwRggbemkVqYfOw/ez1OvS+hEwDQYJKoZIhvcNAQEL
+                                      ...
+                                      FFlplp5+GtgPfcvg+XjMrrHTrhTOcGrhZySJDzg+tiPeFim9V2rxayyAPJGbjw==
+                                      -----END CERTIFICATE-----
+```
+
+## Working with existing certs
+
+You can retrieve your certificate with `Get-CCMCertificate`, though it does not currently supported retrieving individual certificates by name (this is planned for a later release). Typically, if you do not know your certificate ID, you would retrieve all certs and filter by name.
+
+```powershell
+$Certs = Get-CCMCertificate
+$Cert = $Certs | Where-Object { $_.certificateName -eq 'My Certificate' }
+```
+
+Then you can edit various elements of the certificate object, and use `Set-CCMCertificate` to update it. For example, if you wanted to change the name of your certificate:
+
+```powershell
+$Cert.certificateName = 'My New Certificate Name'
+$Cert | Set-CCMCertificate
+```
+
+> You can also use this method to upload the signed certificate and trust chain, as an alternative to `Add-CCMSignedCertificate`.
+
+Alternatively, you can use `Rename-CCMCertificate` to change the name of a certificate.
+
+```powershell
+$Cert | Rename-CCMCertificate -CertificateName 'My New Certificate Name'
+```
+
+Finally, you can remove your certificate with `Remove-CCMCertificate`.
+
+```powershell
+$Cert | Remove-CCMCertificate
+```
+
+## Discoering Cert Bindings
+
+The CCM also allows you to discover which hostnames are bound to which certificate. You can list the bindings globally, or with a single certificate ID, like this:
+
+```powershell
+Get-CCMBinding | Where-Object hostname -eq 'www.example.com'
+
+active        : True
+certificateId : 1234
+hostname      : www.example.com
+network       : STAGING
+resourceType  : CDN_HOSTNAME
+```
+
+Or
+
+```powershell
+$Cert | Get-CCMBinding
+
+active        : True
+certificateId : 1234
+hostname      : www.example.com
+network       : STAGING
+resourceType  : CDN_HOSTNAME
+```
