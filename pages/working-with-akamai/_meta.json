@@ -14,8 +14,8 @@
   "edge-dns": {
     "title": "Edge DNS"
   },
-  "client-network-lists": {
-    "title": "Client & Network Lists"
+  "lists": {
+    "title": "Lists"
   },
   "netstorage": {
     "title": "NetStorage"

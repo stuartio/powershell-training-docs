@@ -1,0 +1,121 @@
+# Network Lists
+
+Network Lists are a the legacy system for working with lists, and have less functionality from the newer Client Lists. Still, they are widely used across many customers, and automating them is simple in PowerShell.
+
+## Creating Lists
+
+To be fair, you really shouldn't be creating Network Lists any more. Client Lists offers everything Network Lists does, and way more. But, if you insist, you can create a Network List like this:
+
+```powershell
+$NewListParams = @{
+    Name = 'My List'
+    Type = 'IP'
+    Description = 'My new list'
+    ContractID = '1-2AB34C'
+    GroupID = 123456
+    Items = @(
+        '1.1.1.1',
+        '2.2.2.2',
+        '3.3.3.3'
+    )
+}
+New-NetworkList @NewListParams
+
+accessControlGroup : somegroup - 1-12AB34C.G123456
+contractId         : 1-2AB34C
+description        : My new list
+elementCount       : 1
+groupId            : 123456
+isUpgradePossible  : True
+isUpgraded         : False
+links              : @{activateInProduction=; activateInStaging=; appendItems=; retrieve=; statusInProduction=;
+                     statusInStaging=; update=}
+list               : {1.1.1.1, 2.2.2.2, 3.3.3.3}
+name               : My List
+networkListType    : networkListResponse
+readOnly           : False
+shared             : False
+syncPoint          : 0
+type               : IP
+uniqueId           : 296736_MYLIST
+```
+
+> Note: Only lists of type `IP` and `GEO` are supported with Network Lists. Client Lists offer many more types.
+
+## Adding or Removing Items
+
+You can add items to your list upon creation, but much more common is the requirement to update a list's items after the fact. To add items to a list you can use `Add-NetworkListItem`, which supports pipelining, like this.
+
+```powershell
+$Items = @(
+    '4.4.4.4'
+    '5.5.5.5'
+    '6.6.6.6'
+)
+$Items | Add-NetworkListItem -NetworkListID 296736_MYLIST
+```
+
+Similarly, you can remove items from a list with `Remove-NetworkListItem`, which also supports pipelining.
+
+```powershell
+$Items = @(
+    '4.4.4.4'
+    '5.5.5.5'
+    '6.6.6.6'
+)
+$Items | Remove-NetworkListItem -NetworkListID 296736_MYLIST
+```
+
+Alternatively you can use the Get/Set pattern to update the list in its entirety.
+
+```powershell
+$List = Get-NetworkList -NetworkListID 296736_MYLIST
+$List.list += '4.4.4.4'
+$List.list += '5.5.5.5'
+$List.list += '6.6.6.6'
+$List | Set-NetworkList # The network list ID is obtained from the piped object
+```
+
+## Deploying your changes
+
+Network lists are versioned, which you can see when you retrieve a list with `Get-NetworkList`. The `syncPoint` property indicates the version of the list, and is incremented each time you make a change and deploy. Once your changes are ready, you can then deploy it with `Deploy-NetworkList`, like this:
+
+```powershell
+Deploy-NetworkList -NetworkListID 296736_MYLIST -Environment STAGING -NotificationRecipients user@mail.com
+
+activationComments :
+activationId       : 123456789
+activationStatus   : PENDING_ACTIVATION
+links              : @{activationDetails=; appendItems=; retrieve=; statusInProduction=; statusInStaging=;
+                     syncPointHistory=; update=}
+syncPoint          : 2
+uniqueId           : 296736_MYLIST
+```
+
+You can also retrieve activations for your network lists using two commands. `Get-NetworkListActivationStatus` will give you the current activation status of your list, and `Get-NetworkListActivation` will give you the details of a specific activation.
+
+```powershell
+Get-NetworkListActivationStatus -NetworkListID 296736_MYLIST -Environment STAGING
+
+activationId     : 123456789
+activationStatus : ACTIVE
+links            : @{activationDetails=; appendItems=; retrieve=; statusInProduction=; statusInStaging=; syncPointHistory=;
+                   update=}
+syncPoint        : 2
+uniqueId         : 296736_MYLIST
+```
+
+```powershell
+Get-NetworkListActivation -ActivationID 123456789
+
+activationId      : 123456789
+createDate        : 01/09/2026 18:24:53
+createdBy         : smacleod
+dispatchCount     : 1
+environment       : STAGING
+estimate          : PT0S
+fast              : True
+initialActivation : False
+networkList       : @{activationStatus=PENDING_ACTIVATION; links=; syncPoint=2; uniqueId=296736_MYLIST}
+status            : RECEIVED
+```
