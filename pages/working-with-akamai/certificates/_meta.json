@@ -1,0 +1,11 @@
+{
+  "cps": {
+    "title": "Certificate Provisioning System (CPS)"
+  },
+  "ccm": {
+    "title": "Cloud Certificate Manager (CCM)"
+  },
+  "default-dv": {
+    "title": "Default DV"
+  }
+}

@@ -11,12 +11,6 @@
   "certificates": {
     "title": "Certificates"
   },
-  "cps": {
-    "title": "Certificate Provisioning System (CPS)"
-  },
-  "ccm": {
-    "title": "Cloud Certificate Manager (CCM)"
-  },
   "edge-dns": {
     "title": "Edge DNS"
   },

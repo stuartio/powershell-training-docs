@@ -1,0 +1,89 @@
+# Default DV
+
+Default DV is a product which allows you to create simplified TLS certificates for your Akamai hostnames easily and cheaply. It provides far fewer options than systems like CPS or CCM, but is intended for customers with many hostnames which require TLS, but do not require the type of hands-on management which can become tiresome at scale.
+
+## Adding Hostnames for Default DV
+
+Default DV certificates are managed through the Property Manager, and its associated Akamai.Property PowerShell module. To begin with, let's add a hostname to a property.
+
+```powershell
+$HostnameParams = @{
+    PropertyName = 'my-property'
+    PropertyVersion = 'latest'
+    NewHostnames = @{
+        cnameFrom = 'www.example.com'
+        cnameTo = 'www.example.com.edgesuite.net'
+        certProvisioningType = 'DEFAULT'
+    }
+}
+Add-PropertyHostname @HostnameParams
+
+cnameType                   : EDGE_HOSTNAME
+edgeHostnameId              : 3399363
+cnameFrom                   : www.example.com
+cnameTo                     : www.example.com.edgesuite.net
+certProvisioningType        : DEFAULT
+domainOwnershipVerification : @{status=VALIDATED}
+```
+
+> When working with Default DV, you do not need your Edge Hostname to already exist, as you do when configuring hostnames with a `certProvisioningType` of `CPS_MANAGED`. The Default DV system will create the Edge Hostname for you, and provision a certificate for it automatically.
+
+## Validating Hostnames
+
+Once your hostname is in place, you will then need to validate it. You can retrieve the validation settings using `Get-PropertyHostname` with the `-IncludeCertStatus` switch.
+
+```powershell
+$Hostnames = Get-PropertyHostname -PropertyName 'my-property' -PropertyVersion 'latest' -IncludeCertStatus
+$Hostname = $Hostnames | Where-Object { $_.cnameFrom -eq 'www.example.com' }
+$Hostname.certStatus | Format-List
+
+production          staging             validationCname
+----------          -------             ---------------
+{@{status=PENDING}} {@{status=PENDING}} @{hostname=_acme-challenge.scriptclub.stuartmacleod.net; target=ac.106498c6ef3…
+```
+
+Here you can see that the cert is pending on both staging and production, and also the validation CNAME. Let's drill down into the object to get more information.
+
+> Remember: Often PowerShell cannot display to you all the properties of your objects, due to their complexity. Pipe your object to `Format-List` to get a more detailed view, but also get into the habit of accessing specific properties directly, which may then also benefit from `Format-List`.
+
+```powershell
+$Hostname.certStatus.validationCname | Format-List
+
+hostname : _acme-challenge.www.example.com
+target   : ac.106498c6ef37ae913ef3a11e4ad4b0ae.www.example.com.validate-akdv.net
+```
+
+If your DNS zone is on another provider, you will then need to create the CNAME record via some other means. But, if you are using Akamai Edge DNS, you can create the record with PowerShell without leaving the shell.
+
+```powershell
+New-EDNSRecordSet -Zone example.com -Name $Hostname.certStatus.validationCname.hostname -Type CNAME -TTL 60 -RData $Hostname.certStatus.validationCname.target
+```
+
+## Validating
+
+Once your DNS record is in place, and you can see its value in a `dig` or `nslookup` command, you can resume the domain validation, like this:
+
+```powershell
+Resume-PropertyHostnameValidation -PropertyName 'my-property' -PropertyVersion 'latest' -Domain www.example.com
+```
+
+Once this is complete, wait a short time, then retrieve your hostnames once more.
+
+```powershell
+$Hostnames = Get-PropertyHostname -PropertyName 'my-property' -PropertyVersion 'latest' -IncludeCertStatus
+$Hostname = $Hostnames | Where-Object { $_.cnameFrom -eq 'www.example.com' }
+$Hostname.certStatus | Format-List
+
+production      : {@{status=NEEDS_ACTIVATION}}
+staging         : {@{status=NEEDS_ACTIVATION}}
+validationCname : @{hostname=_acme-challenge.www.example.com;
+                  target=ac.106498c6ef37ae913ef3a11e4ad4b0ae.www.example.com.validate-akdv.net}
+```
+
+Finally, it is a simple matter of activating your property, after which your cert will be deployed.
+
+```powershell
+Deploy-Property -PropertyName 'my-property' -PropertyVersion 'latest' -Network STAGING -NotifyEmails bob@mail.com
+```
+
+> Note: If you have chosen to auto-create your Edge Hostname, it is possible that your Property will be activated, even to production, before the Edge Hostname is ready. DO NOT change your DNS to point to the edge hostname until the property is active _and_ the Edge Hostname resolves in DNS. It is also a good idea, even once DNS resolves, to spoof your hosts file to confirm every thing is working as it should be.
