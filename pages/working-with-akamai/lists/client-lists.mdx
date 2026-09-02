@@ -1,0 +1,247 @@
+# Client Lists
+
+Client Lists are the modern approach to Akamai lists, supporting many more list types than Network Lists. The following list types are supported:
+
+- ASN
+- DOMAIN (module 3.1+ only)
+- FILE_HASH
+- GEO
+- IP
+- REQUEST_HEADER_NAME_VALUE (module 3.1+ only)
+- TLS_FINGERPRINT
+- USER_ID
+
+## Creating lists
+
+You can create your client list in one of a few ways. In its simplest form, you can use `New-ClientList` with no items, like this:
+
+```powershell
+$CreationParams = @{
+    name = "my-client-list"
+    notes = "My new GEO client list"
+    type ="GEO"
+    tags = 'tag1','tag2'
+    contractId = '1-2AB34C'
+    groupId = 12345
+}
+$MyList = New-ClientList @CreationParams
+$MyList
+
+availableActions           : @{DEACTIVATE_ON_PRODUCTION=; EDIT=; DEACTIVATE=; ACTIVATE_ON_PRODUCTION=;
+                             ACTIVATE_ON_STAGING=; DEACTIVATE_ON_STAGING=; DELETE=}
+contractId                 : 1-2AB34C
+createDate                 : 02/09/2026 10:05:42
+createdBy                  : smacleod
+deprecated                 : False
+groupId                    : 123456
+groupName                  : Your Group-1-2AB34C
+items                      : {}
+itemsCount                 : 0
+listId                     : 297136_MYCLIENTLIST
+listType                   : CL
+name                       : my-client-list
+notes                      : My new GEO client list
+productionActivationStatus : INACTIVE
+readOnly                   : False
+shared                     : False
+stagingActivationStatus    : INACTIVE
+tags                       : {tag1, tag2}
+type                       : GEO
+updateDate                 : 02/09/2026 10:05:42
+updatedBy                  : smacleod
+version                    : 1
+```
+
+You can also create a list including items, in one of two ways. Firstly, you can include the items as a simple list of strings, like this:
+
+```powershell
+$CreationParams = @{
+    name = "my-client-list"
+    notes = "My new GEO client list"
+    type ="IP"
+    tags = 'tag1','tag2'
+    contractId = '1-2AB34C'
+    groupId = 12345
+    items = '1.1.1.1', '2.2.2.2'
+}
+New-ClientList @CreationParams
+```
+
+Alternatively, if you wish to include metadata for your items you can do this:
+
+```powershell
+$CreationParams = @{
+    name = "my-client-list"
+    notes = "My new GEO client list"
+    type ="GEO"
+    tags = 'tag1','tag2'
+    contractId = '1-2AB34C'
+    groupId = 12345
+    items = @(
+        @{
+            description = "United States - North America"
+            expirationDate = "2026-12-31T23:59:19.700+00:00"
+            tags = @(
+                "tag1"
+            )
+            value = "US"
+        }
+        @{
+            description = "Canada - North America"
+            expirationDate = "2026-12-31T23:59:19.700+00:00"
+            tags = @(
+                "tag1"
+            )
+            value = "CA"
+        }
+    )
+}
+New-ClientList @CreationParams
+```
+
+## Managing Lists
+
+As with most Akamai PowerShell modules, you can list all Client Lists, or retrieve a specific list by using `Get-ClientList`.
+
+```powershell
+# List all Client Lists
+Get-ClientList
+
+# List all Client and Network Lists
+Get-ClientList -IncludeNetworkList
+
+# List all Client Lists, and include items in the response
+Get-ClientList -IncludeItems
+
+# Retrieve a specific Client List by name
+Get-ClientList -Name "my-client-list"
+
+# Search for a specific Client List by partial name
+Get-ClientList -Search "my-client"
+```
+
+> Note the inclusion of `-Name` in the command. Client List functions, similar to AppSec and Property functions, support name expansion to make life easier, as well as version expansion which is demonstrated below.
+
+You can use `Set-ClientList` to update a Client List's metadata, such as its name, notes, or tags.
+
+```powershell
+# Update tags & notes
+Set-ClientList -Name "my-client-list" -Tags 'tag1','tag2','tag3'
+
+# Rename a client list
+Set-ClientList -Name "my-client-list" -NewName "my-new-client-list"
+```
+
+Finally, you can remove client lists with `Remove-ClientList`, which also supports pipelining. Note that you must deactivate a Client List fully before it can be removed. This is relatively new functionality, as previously any CLient List which had ever been activated could not be removed, even if it was deactivated.
+
+```powershell
+# Remove a client list by name
+Remove-ClientList -Name "my-client-list"
+
+# Find matching lists and remove
+Get-ClientList -Search "my-client" | Remove-ClientList
+```
+
+## Managing List Items
+
+We have configured multiple commands to simplify managing your Client List's items.
+
+### Adding and Importing Items
+
+You can add items to your list using `Add-ClientListItem`, which supports adding either simple values or items with metadata, just as when using `New-ClientList` above.
+
+```powershell
+# Add a simple item to an IP list
+Add-ClientListItem -Name "my-client-list" -Items "1.1.1.1"
+
+# Add two items to an IP list
+Add-ClientListItem -Name "my-client-list" -Items "2.2.2.2", "3.3.3.3"
+
+# Add a complex item to a GEO list
+$Items = @(
+    @{
+        description = "United States - North America"
+        expirationDate = "2026-12-31T23:59:19.700+00:00"
+        tags = "tag1","tag2"
+        value = "US"
+    }
+)
+Add-ClientListItem -Name "my-client-list" -Items $Items
+```
+
+You can also import items, either using a list of provided items as before, or from a CSV file. This process is useful for two reasons: first, importing hundreds or even thousands of items might be much easier with a CSV, and secondly the import process allows you to choose whether you want to merge or replace the items with those already existing. This is essential if you need to wholly replace the contents of your Client List.
+
+This is also the first time we have seen the concept of `-Version` in the Client Lists module. When importing items you must specify a version, which can be either an integer or the keyword "latest" ("staging", and "production" keywords will be added in a later release).
+
+```powershell
+# Import two items and merge into the existing list
+Import-ClientListItem -Name "my-client-list" -Version "latest"  -Items "3.3.3.3", "4.4.4.4" -Action MERGE
+
+# Import two items and replace items in the list
+Import-ClientListItem -Name "my-client-list" -Version "latest" -Items "3.3.3.3", "4.4.4.4" -Action REPLACE
+
+# Import items from a CSV
+Import-ClientListItem -Name "my-client-list" -Version "latest" -File "my-client-list.csv" -Action REPLACE
+```
+
+> Your CSV file should have column headers `value`, `description`, `tags`, and `expirationDate`
+
+You can also use the `Test-ClientListItem` command in the same ways as `Import-ClientListItem` to validate either a list of items or a CSV file before importing them.
+
+```powershell
+# Test a list of items
+Test-ClientListItem -Name "my-client-list" -Items "3.3.3.3", "4.4.4.4"
+
+# Test items from a CSV
+Test-ClientListItem -Name "my-client-list" -File "my-client-list.csv"
+```
+
+### Removing Items
+
+You can remove items from your client list using `Remove-ClientListItem`.
+
+```powershell
+# Remove a single item from a list
+Remove-ClientListItem -Name "my-client-list" -Items "1.1.1.1"
+
+# Filter items from an existing list to remove
+$List = Get-ClientList -Name "my-client-list" -IncludeItems
+
+$List.items | Where-Object { $_.value -like "2.*" } | Remove-ClientListItem -Name "my-client-list"
+```
+
+### Replacing Items
+
+There is a `Set-ClientListItem` command, though its usage may not be obvious. For example, if you had an IP list with two items: 1.1.1.1 and 2.2.2.2, and you ran the command below, all that would change would be the updatedDate of each item.
+
+```powershell
+Set-ClientListItem -Name "my-client-list" -Items "1.1.1.1", "2.2.2.2"
+```
+
+However, the utility of this command is to update item _metadata_, such as tags, description or expiration date, based on the value. So, you could run the below to add/update tags to your items.
+
+```powershell
+$Items = @(
+    @{
+        value = "1.1.1.1"
+        tags = "tag1","tag2"
+    }
+    @{
+        value = "2.2.2.2"
+        tags = "tag1","tag2"
+    }
+)
+$Items | Set-ClientListItem -Name "my-client-list"
+```
+
+> Remember: You can declare an array with `@('item1', 'item2')` or just as `'item1', 'item2'`. Either is valid, and we use them interchangeably in this course.
+
+## Acitvating your list
+
+Changes made to your Client List with the above commands are not activated automatically. Instead, you must deploy your list, like this:
+
+```powershell
+Deploy-ClientList -Name "my-client-list" -Network PRODUCTION
+```
+
+> You can also add `-NotificationRecipients` with one or more email addresses to receive a notification when the deployment is complete.
