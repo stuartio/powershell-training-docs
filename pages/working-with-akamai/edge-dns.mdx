@@ -136,14 +136,14 @@ name                  type  ttl rdata
 www.example.com       CNAME 300 {www.example.com.edgesuite.net.}
 ```
 
-> Note: The `-Name` parameter requires the fully qualified domain name (FQDN) of the record you wish to retrieve, which includes the zone name. There is a change included in version 3.1 of the Akamai.EdgeDNS module which will allow you to only provide the record name, without retyping the zone.
+> Note: The `-Name` parameter can accept a fully qualified domain name, or a relative name. For example, if your zone is `example.com` `-Zone example.com -Name www` is equivalent to `-Zone example.com -Name www.example.com`. This change was introduced in Akamai.EdgeDNS v3.1.0, so make sure to update your local modules to at least this version if you'd like to use this feature.
 
 ### Creating records
 
 You can create records using `New-EDNSRecordSet`, like this:
 
 ```powershell
-New-EDNSRecordSet -Zone "example.com" -Name "www.example.com" -Type CNAME -TTL 120 -Rdata "www.example.com.edgekey.net"
+New-EDNSRecordSet -Zone "example.com" -Name "www" -Type CNAME -TTL 120 -Rdata "www.example.com.edgekey.net"
 ```
 
 The endpoint this function uses also supports creating multiple records at once, so just like when creating zones you are offered a few options when creating multiple records. First, you could simply call `New-EDNSRecordSet` in a loop. This would work fine, but does not scale well, especially if you need to create hundreds or even thousands of records. A better approach would be to use the `-Body` parameter and construct a request body directly. For example, this JSON block can be used to create 2 records in a single API call:
@@ -171,7 +171,7 @@ The endpoint this function uses also supports creating multiple records at once,
 }
 ```
 
-Or, if you prefer, you could do it with PowerShell objects, like this:
+Or, if you prefer, you could do it with PowerShell objects, as below, but remember that in this case you must provide fully qualified domain names in the rdata elements, as the zone will not be inferred here.
 
 ```powershell
 $Body = @{
@@ -205,7 +205,7 @@ $Body | New-EDNSRecordSet -Zone "example.com"
 Something worth noting is how you could go about creating a record set with multiple Rdata values. RData in a record set is an array, after all, but in the above examples we have been focussing on single-entry records. Below is an example of creating a record set with multiple Rdata values, which is useful for creating MX records, for example.
 
 ```powershell
-New-EDNSRecordSet -Zone "example.com" -Name "mail.example.com" -Type MX -TTL 300 -Rdata "10 mail1.example.com.", "20 mail2.example.com."
+New-EDNSRecordSet -Zone "example.com" -Name mail -Type MX -TTL 300 -Rdata "10 mail1.example.com.", "20 mail2.example.com."
 ```
 
 Note that the `-RData` parameter accepts an array of strings, so you can provide as many Rdata values as you need, sepatated on the command line with commas. Or you could define an array in a variable and pass that to the `-RData` parameter, like this:

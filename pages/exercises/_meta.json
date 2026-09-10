@@ -7,5 +7,11 @@
   },
   "3-ex-appsec": {
     "title": "App & API Protector"
+  },
+  "4-ex-edge-dns": {
+    "title": "Edge DNS"
+  },
+  "5-ex-edgeworkers": {
+    "title": "EdgeWorkers"
   }
 }

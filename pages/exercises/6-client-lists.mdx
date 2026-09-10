@@ -1,0 +1,49 @@
+import { Steps } from 'nextra/components'
+
+# Exercise 6: Client Lists
+
+<Steps>
+{<h3>Create a Client List</h3>}
+Let's create an IP Client List. You will need a contract and group ID, which can be retrieved with `Get-Contract` and `Get-Group` respectively (or you can use `Get-ClientListContractsGroups`). You can also include items in the creation command if you wish, but this is not required.
+
+{<h3>Add some entries to your Client List</h3>}
+Add the following entries to your client list. At least one must include tags and description, as described in the guide.
+
+* 1.1.1.1
+* 2.2.2.2
+* 3.3.3.3
+* 4.4.4.4
+
+The command you need is `Add-ClientListItem`.
+
+{<h3>Create a CSV and import more items</h3>}
+Create a CSV file with the following content, and import it into your client list.
+
+```
+value,description,tags,expirationDate
+5.5.5.5,fives,powershell testing,
+6.6.6.6,sixes,powershell testing,
+7.7.7.7,sevens,powershell testing,
+8.8.8.8,eights,powershell testing,
+```
+
+The command you need is `Import-ClientListItem`. Make sure to add these items to your list, rather than replacing them.
+
+{<h3>Search client lists for one of your entries</h3>}
+Use `Get-ClientList` in combination with `Where-Object` to identify which client lists include the IP address '7.7.7.7'. You should find your list at least.
+
+> You must use the `-IncludeItems` parameter with `Get-ClientList` to retrieve the items in each list along with the list's metadata.
+
+{<h3>Remove some items from your list</h3>}
+Remove any 3 items from your list.
+
+{<h3>Deploy your list</h3>}
+Activate your Client List to staging.
+
+{<h3>Rename your list</h3>}
+You can change the name with `Set-ClientList`.
+
+{<h3>Deactivate and delete your list</h3>}
+Finally, deactivate your list from staging, then delete it. You can do this with `Disable-ClientList` and `Remove-ClientList`, but remember the deactivation must be complete before the deletion command can be issued.
+
+</Steps>

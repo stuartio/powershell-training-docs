@@ -1,0 +1,53 @@
+import { Steps } from 'nextra/components'
+
+# Exercise 5: EdgeWorkers
+
+<Steps>
+{<h3>Create an EdgeWorker</h3>}
+First off, let's create an EdgeWorker. As always, you will need a group ID, but not a contract ID on this occasion. You must also select an appropriate resource tier, which can differ between accounts. You can retrieve the available resource tiers with `Get-EdgeWorkerResourceTier`.
+
+{<h3>Create a version for your EdgeWorker</h3>}
+Create a folder for your EdgeWorker source code, and add `main.js` and `bundle.json` files. You can use the content below, or simply copy files from any deployed EdgeWorker.
+
+* main.js
+```javascript
+import { logger } from "log";
+export function onClientResponse(request, response) {
+  logger.log("EdgeWorker executed.");
+  response.addHeader('Hello', 'There');
+}
+```
+
+* bundle.json
+```json
+{
+  "edgeworker-version": "0.0.1",
+  "description": "PowerShell exercise"
+}
+```
+
+Once your files are in place, use `New-EdgeWorkerVersion` to create the new version.
+
+{<h3>Update your EdgeWorker</h3>}
+Make a change to `main.js`, and use `New-EdgeWorkerVersion` to increment the version. Remember, you don't need to increment the version in the `bundle.json` file (unless you really want to), as you can use the `-Version`, `-Major`, `-Minor` and `-Patch` parameters to update the version automatically.
+
+{<h3>Deploy your EdgeWorker</h3>}
+Deploy your EdgeWorker to Staging.
+
+{<h3>(Optional) Include your EdgeWorker in a property</h3>}
+If you have a test property, update it to include your EdgeWorker. You could do this with PowerShell, but generating the correct JSON for a behavior can be tricky, so feel free to use the UI if you wish. Once your property is updated and activated, make a request to your hostname and look for the header you set in your code in the response.
+
+{<h3>Generate an auth token</h3>}
+Use PowerShell to get the EdgeWorkers enhanced debug token which you can use with `akamai-ew-trace`. If you completed the previous step, add the following headers to your HTTP request:
+
+```
+pragma: akamai-x-ew-debug,akamai-x-ew-debug-subs,akamai-x-ew-debug-rp
+akamai-ew-trace: <your token>
+```
+
+Look for the `X-Akamai-EdgeWorker-onClientResponse-Log` response header. It should contain the log message you set in your code, which indicates that your EdgeWorker executed successfully.
+
+{<h3>Deactivate your EdgeWorker, then remove it</h3>}
+Now you are finished you must deactivate your EdgeWorker, then remove it. You can do this with `Disable-EdgeWorker` and `Remove-EdgeWorker`, but remember the deactivation must be complete before the deletion command can be issued.
+
+</Steps>

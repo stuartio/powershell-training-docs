@@ -1,0 +1,44 @@
+import { Steps } from 'nextra/components'
+
+# Exercise 4: Edge DNS
+
+In this exercise you will create an Edge DNS primary zone, add and remove records to it, and finally delete the zone.
+
+<Steps>
+{<h3>Create an primary zone</h3>}
+First off, let's create a primary zone. Don't worry about the fact that this is not a real zone, but you will need to pick a zone name that doesn't already exist. I'd recommend `<your username>.test` or something similar. As with most APIs we cover, you will also need a contract ID and group ID, which can be retrieved with `Get-Contract` and `Get-Group` respectively.
+
+The command you need to create a zone is `New-EDNSZone`.
+
+> Do so in an account that has Edge DNS on contract, but only use an internal account. APIs make life much easier, but also make it much easier to cause all kinds of disastrous carnage...
+
+{<h3>Create the necessary NS and SOA records</h3>}
+As mentioned in the guide, when you create a primary zone it comes with no records whatsoever. But, you will need NS and SOA records for a valid zone.
+
+> Hint: the commands for this are in the guide, so give it a read if you haven't already.
+
+{<h3>Add a few records</h3>}
+Add records of the following types and targets. You can use any TTLs you choose. Records named `@` are apex records so their `-Name` value will be simply the zone name.
+
+| Record | Type | Target(s) |
+| --- | --- | --- |
+| @ | MX | `10 mail.outlook.com.` |
+| @ | TXT | `"v=spf1 include:spf.protection.outlook.com -all"` |
+| www | CNAME | `www.example.com.edgesuite.net` |
+| api | CNAME | `api.example.com.edgesuite.net` |
+| vpn | A | `1.2.3.4, 2.3.4.5` |
+
+> The A record has multiple targets, which is supported by the `-RData` parameter, so long as you have multiple strings separated by commas, rather than one string which _contains_ commas. For example `-RData '1.2.3.4', '2.3.4.5'` is valid, but `-RData '1.2.3.4, 2.3.4.5'` is not.
+
+{<h3>Retrieve your DNS records</h3>}
+You should now be able to list all records in your zone, and see both the NS and SOA records, and the ones you just created. Do so now.
+
+{<h3>Change the TTL on your CNAME records</h3>}
+Set the TTL on your CNAME records to 3600 seconds.
+
+> Be careful when using `Set-EDNSRecordSet`. If you give it one record it will replace that record. If you give it more than one record, it will (with your approval) replace ALL records in your zone with just those 2, which we don't want. Structure your commands to accomodate.
+
+{<h3>Delete your zone.</h3>}
+This is reasonably uncommon in the real world, but we want to tidy up after ourselves, so remove your zone.
+
+</Steps>
