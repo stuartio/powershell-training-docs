@@ -223,13 +223,13 @@ New-EDNSRecordSet -Zone "example.com" -Name "mail.example.com" -Type MX -TTL 300
 How you update records depends on how many records you need to update in a single call. Updating a single record can be done like this:
 
 ```powershell
-Set-EDNSRecordSet -Zone "example.com" -Name "www.example.com" -Type CNAME -TTL 120 -Rdata "www.example.com.edgekey.net"
+Set-EDNSRecordSet -Zone "example.com" -Name www -Type CNAME -TTL 120 -Rdata "www.example.com.edgekey.net"
 ```
 
 Or, you could retrieve the record, update what needs updating, then pipe the result.
 
 ```powershell
-$Record = Get-EDNSRecordSet -Zone "example.com" -Name "www.example.com" -Type CNAME
+$Record = Get-EDNSRecordSet -Zone "example.com" -Name www -Type CNAME
 $Record.ttl = 300
 $Record | Set-EDNSRecordSet -Zone "example.com"
 ```
