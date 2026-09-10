@@ -1,0 +1,114 @@
+# Managing Files
+
+The Netstorage Usage API allows you to manage the contents of your Storage Groups easily, uploading, downloading, and deleting files as needed. The Akamai.Netstorage module provides a set of cmdlets to work with the Usage API, allowing you to perform these operations directly from PowerShell.
+
+## Authentication
+
+The Netstorage Usage API is unique in the Akamai PowerShell modules, as it is the only API which does not use standard EdgeGrid authentication. Instead, it uses its own authentication scheme, which is based on Netstorage Upload Account HTTP API keys, storage group prefixes, and CP Code (upload directory) elements. Typically, your credentials would be stored in an auth file, which we've dubbed an nsrc file, and look like this:
+
+```shell
+[default]
+key=aq0nd1o7clw31tqm6a9g8li10sig8qjyl51gp9rhkv1sp6a9
+id=sample
+group=sample_group
+host=sample-nsu.akamaihd.net
+cpcode= 123456
+```
+
+> NSRC files can contain multiple sections, just like EdgeRCFiles, and the relevant commands contain a `-Section` parameter for you to specify which section to use, if not `default`.
+
+In the above example, the `key` is your HTTP API key, `id` is the Upload Account ID, `group` is the storage group prefix, `host` is the Storage Group's HTTP API upload host, and cpcode is the Storage Group's CP Code, or upload directory.
+
+However, configuring this yourself is a hassle you likely don't want, so we have configured comnmands in the Akamai.Netstorage module to make this a lot easier. For example, the `New-NetstorageCredentials` command will retrieve the necessary elements from your Netstorage Upload Account, including its associated Storage Group, which can then be piped to `Export-NetstorageCredentials` to be written to an NSRC file.
+
+```powershell
+New-NetstorageCredentials -UploadAccountId 123456 | Export-NetstorageCredentials -NSRCFile .\mycredentials.nsrc -Section 'new'
+```
+
+Or, if you'd like to use an NSRC file located somewhere other than the default (`~/.nsrc`) and a section other than `default`, you can specify with the `-NSRCFile` and `-Section` parameters.
+
+```powershell
+New-NetstorageCredentials -UploadAccountId 123456 | Export-NetstorageCredentials -NSRCFile .\mycredentials.nsrc -Section 'new'
+```
+
+> Note: If you do export to a non-default location, you will need to include this location with your file operation commands. The commands below assume you are using the default location and section, for brevity, but you can always use `-NSRCFile` and `-Section` with any file operation command.
+
+## Working with Files
+
+The following commands can be used to work with files in your Storage Groups. As mentioned above, all commands support `-NSRCFile` and `-Section`.
+
+| Command | Description | API operation |
+| --- | --- | --- |
+| `New-NetstorageDirectory` | Create an explicit NetStorage directory. | `mkdir` |
+| `Write-NetstorageObject` | Upload a file to NetStorage. | `upload` |
+| `Get-NetstorageDirectory` | Get a directory. | `dir` / `list` |
+| `Get-NetstorageDirectoryUsage` | Get directory usage. | `du` |
+| `New-NetstorageSymlink` | Create a new NetStorage symlink. | `symlink` |
+| `Read-NetstorageObject` | Download a single file from NetStorage. | `download` |
+| `Read-NetstorageDirectory` | Recursively download a directory and its children from NetStorage. | `dir` / `list` + `download` |
+| `Set-NetstorageObjectMTime` | Set NetStorage object modified time. | `mtime` |
+| `Measure-NetstorageObject` | Get object stat. | `stat` |
+| `Rename-NetstorageObject` | Rename a NetStorage object. | `rename` |
+| `Remove-NetstorageObject` | Delete a NetStorage object. | `delete` |
+| `Remove-NetstorageDirectory` | Delete a NetStorage directory. | `rmdir` / `quick-delete` |
+
+Below are a few examples to get you started:
+
+* Upload a file to your Storage Group
+```powershell
+Write-NetstorageObject -FilePath .\myfile.txt -RemotePath /myfile.txt
+```
+
+> When working with files, you do not need to prefix your paths with the upload directory, e.g. /123456/myfile.txt. PowerShell handles this for you.
+
+* Download a file from Netstorage
+```powershell
+Read-NetstorageObject -RemotePath /myfile.txt -FilePath .\myfile.txt
+```
+
+* List all files in the top level of your Storage Group
+```powershell
+Get-NetstorageDirectory -Path /
+
+type     : dir
+name     : myfolder
+bytes    : 3216050
+files    : 60
+mtime    : 1634570027
+implicit : true
+
+type     : dir
+name     : myotherfolder
+bytes    : 3127630
+files    : 46
+mtime    : 1629818349
+implicit : true
+```
+
+* List all files recursively, in all folders in your Storage Group
+```powershell
+Get-NetstorageDirectory -Path / -Recurse
+
+type  : file
+name  : 816551/myfolder/favicon.ico
+size  : 16958
+md5   : 2f1894ab3da801791ce86a153bb0c5d2
+mtime : 1653875613
+
+type  : file
+name  : 816551/myotherfolder/waiting-room.html
+size  : 6784
+md5   : 3580ca085845cbd85f2d27917e465633
+mtime : 1656346150
+```
+
+> It is always good practice to assign the result of any command, especially one with a large output, such as the one above, to a variable so you can work with the data later.
+
+```powershell
+$Files = Get-NetstorageDirectory -Path / -Recurse
+```
+
+* Find all HTML files in your storage group and delete
+```powershell
+Get-NetstorageDirectory -Path / -Recurse | Where-Object name -like '*html' | Select-Object name | Remove-NetstorageObject
+```

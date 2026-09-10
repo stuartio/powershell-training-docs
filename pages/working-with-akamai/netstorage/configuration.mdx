@@ -1,0 +1,241 @@
+# Configuring Netstorage
+
+The Netstorage configuration API is a standard, edgegrid-based API similar to most of the others you might have worked with in PowerShell. Typically, working with this API revoles around storage groups and upload accounts.
+
+## Storage Groups
+
+### Retrieving Storage Groups
+
+You can retrieve all storage groups, or a specific group by its ID, like this:
+
+```powershell
+# List all storage groups
+$Groups = Get-NetStorageGroup
+
+# Retrieve a specific storage group by ID
+$Group = Get-NetStorageGroup -StorageGroupId 1234
+
+$Group
+
+contractId          : 1-2AB34C
+storageGroupId      : 10123456
+storageGroupName    : test-group
+storageGroupType    : OBJECTSTORE
+storageGroupPurpose : NETSTORAGE
+domainPrefix        : test-group
+asperaEnabled       : True
+pciEnabled          : False
+estimatedUsageGB    : 25.11
+allowEdit           : True
+provisionStatus     : PROVISIONED
+cpcodes             : {@{cpcodeId=456789; downloadSecurity=ALL_EDGE_SERVERS; useSsl=False; serveFromZip=False;
+                      sendHash=False; quickDelete=True; numberOfFiles=29122; numberOfBytes=16;
+                      lastChangesPropagated=True; requestUriCaseConversion=NO_CONVERSION; queryStringConversion=;
+                      pathCheckAndConversion=DISALLOW_ALL_IMPROPER_PATHS; encodingConfig=; dirListing=;
+                      ageDeletions=System.Object[]; lastModifiedBy=smacleod; lastModifiedDate=01/03/2025 00:42:59}}
+zones               : {@{zoneName=global; noCapacityAction=SPILL_OUTSIDE; allowUpload=YES; allowDownload=YES;
+                      lastModifiedBy=smacleod; lastModifiedDate=24/04/2019 15:35:51}, @{zoneName=europe;
+                      noCapacityAction=SPILL_OUTSIDE; allowUpload=YES; allowDownload=YES; lastModifiedBy=smacleod;
+                      lastModifiedDate=24/04/2019 15:35:51}}
+propagationStatus   : @{status=ACTIVE; activeChanges=System.Object[]}
+lastModifiedBy      : smacleod
+lastModifiedDate    : 01/03/2025 00:42:59
+```
+
+> As usual, it is best to assign complex response objects to a variable, which you can spelunk in more detail later.
+
+### Creating Storage Groups
+
+Creating a storage group requires quite a complex body object, so unfortunately we don't support providing the various options through inline parameters. Below is an example of the simplest request body you could use to create a group, but some elements of the body require a little explanation:
+
+```powershell
+$CreationBody = '{
+  "contractId": "K-0N7RAK7",
+  "cpcodes": [
+    {
+      "cpcodeId": 7654321,
+      "enableQuickDelete": true
+    }
+  ],
+  "domainPrefix": "akastorage",
+  "storageGroupName": "aka_storage",
+  "zones": [
+    {
+      "zoneName": "global"
+    },
+    {
+      "zoneName": "us"
+    }
+  ],
+  "groupId": 123456
+}'
+```
+
+Certain fields above, such as `contractId` and `groupId` should be self evident, these are the same as almost all modules require when creating. `storageGroupName` is the name you want for storage group, which can contain various casing, spaces and the like. `domainPrefix` is the prefix which applies to the various upload domains, so must adhere to hostname constraints, i.e. be all lower case, plus optionally numbers and hyphens. This is the value which prefixes `.ssh.upload.akamai.com` for your SSH upload domain, for example.
+
+`zones` is an array of objects with a single property: `zoneName`. You can retrieve the list of zone prefixes with the command `Get-NetstorageZone`, and you must include exactly two.
+
+`cpcodes` is an array of objects which correspond to upload directories in the Netstorage UI. These are technically CP Codes, but they are unrelated to the ones you might have created for your Ion or AMD properties. Instead, you must pre-create your Netstorage CP Codes using the following:
+
+```powershell
+New-NetstorageCpcode -CpCodeName 'My NS CP Code' -ContractId '1-2AB34C'
+
+cpcodeId
+--------
+ 7654321
+```
+
+> Note: Netstorage changes take a _very_ long time, typically 4+ hours. Plan accordingly!
+
+### Managing Storage Groups
+
+Once your group is created you can retrieve it, edit it, delete it, or restore it. Updating the group, just like creating, requires a complex request body, but in this case it is much simpler to retrieve the existing group, edit the content either as a PSCustomObject or JSON string, then push it back.
+
+You can retrieve groups, either all or individually, using `Get-NetstorageGroup`.
+
+```powershell
+# List all groups
+$Groups = Get-NetstorageGroup
+
+# Find a group by name
+$MyGroup = Get-NetstorageGroup | Where-Object storageGroupName -eq 'My Storage Group'
+
+# Retrieve a group by its ID directly
+$MyGroup = Get-NetstorageGroup -StorageGroupId 123456
+```
+
+> Note: Some Akamai APIs do this differently, but the Netstorage config API returns the same data for a storage group whether you list and filter, or retrieve by ID.
+
+When editing storage groups, you can update the group's name (not the domain prefix), zones or CP Codes (upload directories). For example:
+
+```powershell
+$MyGroup.storageGroupName = 'My New Storage Group Name'
+$MyGroup.zones += [PSCustomObject] @{zoneName = 'europe'}
+$MyGroup.cpcodes[0].quickDelete = $true
+$MyGroup | Set-NetstorageGroup
+```
+
+If you no longer require your storage group, you can delete it like this:
+
+```powershell
+$MyGroup | Remove-NetstorageGroup
+```
+
+Or, if you realise (within a short time period) that you need it back, you can restore it:
+
+```powershell
+$MyGroup | Restore-NetstorageGroup
+```
+
+> It is recommended to save your storage group ID for a group you have deleted, as you will need it to restore but can no longer retrieve it with `Get-NetstorageGroup`.
+
+## Upload Accounts
+
+Uploading content to your storage group can be achieved by multiple methods, e.g. ssh, sftp and so on. All of these methods are controlled by the Upload Account.
+
+
+### Creating an Upload Account
+
+Much like Storage Group creation, Upload Account creation requires a fairly complex body, largely relating to your already existing Storage Group and its CP Codes/Upload Directories. Below is a sample body to create an Upload Account.
+
+```powershell
+$CreateBody = '{
+    "uploadAccountId": "my-upload-account",
+    "storageGroupId": 123456,
+    "isEditable": true,
+    "isVisible": true,
+    "ftpEnabled": false,
+    "sshEnabled": true,
+    "rsyncEnabled": false,
+    "asperaEnabled": false,
+    "email": "mail@example.com",
+    "accessConfig": {
+        "hasReadOnlyAccess": false,
+        "cpcodes": [
+            {
+                "cpcodeId": 234567,
+                "storageGroup": {
+                    "storageGroupId": 123456,
+                    "storageGroupName": "pester"
+                }
+            }
+        ]
+    },
+    "technicalContactInfo": {
+        "newTechnicalContact": {
+            "firstName": "Obi-Wan",
+            "lastName": "Kenobi",
+            "email": "okenobi@akamai.com",
+            "phone": {
+                "countryCode": "+44",
+                "areaCode": "203",
+                "number": "7879408"
+            }
+        }
+    }
+}'
+New-NetstorageUploadAccount -Body $CreateBody
+```
+> You may not need every field above, and there are a bunch of optional fields not included. Check out the API doc for reference if you have errors.
+
+### Managing Upload Accounts
+
+You can retrieve, edit, enable, disable, and delete Upload Accounts in a similar manner to Storage Groups. You can retrieve all accounts, or a specific account by its ID, like this:
+
+```powershell
+# List all upload accounts
+$Accounts = Get-NetstorageUploadAccount
+
+# Retrieve a specific upload account by ID
+$Account = Get-NetstorageUploadAccount -UploadAccountId 'my-upload-account'
+```
+
+Editing an Upload Account can be done in a similar vein to editing a Storage Group, but as you can see below, there are commands specific to managing keys of different types also. Editing an Upload Account typically focuses on changing its access, i.e. changing it to access a different upload directory, or reassigning it to another user. In any case, the simplest approach is to pull the object to a variable, edit it, then push it back.
+
+```powershell
+# Retrieve the account
+$Account = Get-NetstorageUploadAccount -UploadAccountId 'my-upload-account'
+
+# Enable File Manager
+$Account.enableFileManagerAccess = $true
+
+# Move to a different upload directory
+$Account.accessConfig.cpcodes[0].cpcodeId = 234567
+
+# Push the changes back
+$Account | Set-NetstorageUploadAccount
+```
+
+You can also enable or disable an upload account, which is useful if you want to temporarily stop access without deleting the account. Both of these operations allow you to pipe a previously retrieved account object to the command, or specify the account ID directly.
+
+```powershell
+$Account | Disable-NetstorageUploadAccount
+
+Enable-NetstorageUploadAccount -UploadAccountId 'my-upload-account'
+```
+
+Finally, if you no longer require an Upload Account, you can delete it:
+
+```powershell
+$Account | Remove-NetstorageUploadAccount
+# Or specify the account ID directly
+Remove-NetstorageUploadAccount -UploadAccountId 'my-upload-account'
+```
+
+### Managing Keys
+
+Upload accounts can have multiple keys, of various types. Upload Accounts support plain ftp, secure ftp, ssh, and rsync (aspera keys cannot be managed via this API). Each of these has a different key type, and you can manage them all through PowerShell. There are rather a lot of commands in this area, but you can easily identify which commands apply to which types of key by their suffic. For example, commands relating to FTP Keys end in `-NetstorageUploadAccountFTPKey`, commands relating to SSH keys end in `-NetstorageUploadAccountSSHKey`, and so on. All of these commands require the Upload Account as a parameter, either piped in or specified by ID. For example, to create an SSH key for an Upload Account:
+
+```powershell
+# Create an SSH key for an Upload Account
+$MyKey = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABA<more b64 data>31ItIY7NsCaWLYpV mail@example.com"
+Add-NetstorageUploadAccountSSHKey -UploadAccount 'my-upload-account' -Key $MyKey
+```
+
+Or, if you've already retrieved your Upload Account to a variable named `$Account`, you can pipe it in:
+
+```powershell
+# Create an SSH key for an Upload Account
+$MyKey = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABA<more b64 data>31ItIY7NsCaWLYpV mail@example.com"
+$Account | Add-NetstorageUploadAccountSSHKey -Key $MyKey
+```
