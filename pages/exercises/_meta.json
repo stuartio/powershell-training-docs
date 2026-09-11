@@ -13,5 +13,8 @@
   },
   "5-ex-edgeworkers": {
     "title": "EdgeWorkers"
+  },
+  "6-ex-client-lists": {
+    "title": "Client Lists"
   }
 }
