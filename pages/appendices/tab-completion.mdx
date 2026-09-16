@@ -37,6 +37,7 @@ If you wish to change the way tab works on either platform, you can do by using 
 
 ```powershell
 Set-PSReadlineKeyHandler -Key Tab -Function TabCompleteNext
+Set-PSReadlineKeyHandler -Key Shift+Tab -Function TabCompletePrevious
 ```
 
 Alternatively, if you wanted to use the default Mac/Linux behavior, you would run:

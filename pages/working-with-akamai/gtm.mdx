@@ -1,1 +1,515 @@
 # Global Traffic Manager (GTM)
+
+Global Traffic Manager (GTM) is one of the most heavily used Akamai APIs, behind only SIEM and Purge. Users use the API to update GTM domains, properties and maps, as well as to retrieve metrics and other reports.
+
+The Akamai.GTM PowerShell module combines endpoints from 3 GTM APIs: the configuration API, the reporting API and the load feedback API. The module combines these APIs in such a way that should mask the different APIs used for each task, allowing you to simply use the commands regardless.
+
+## Working with Domains
+
+The primary configuration unit in GTM is the domain. Domains are typically created as a sub-domain of akadns.net, but it is also possible to use a custom domain name of your choosing. Domains include multiple properties, which can use standard DNS record types, know as `static` records, or more commonly use the load balancing functionality of GTM, such as weighted random load balancing properties, or performance.
+
+### Creating a Domain
+
+The `New-GTMDomain` command requires a request body, due to the many complex options you can use when creating a domain. However, at its simplest, all you require is a name and a type, like this:
+
+```powershell
+New-GTMDomain -ContractID 1-1AB23C -GroupID 123456 -Body @{ name = "mydomain.akadns.net"; type = "basic" }
+
+links                        : {@{rel=self; href=https://akab-gedolm7tfx6eem2c-5k64mr4pxhnxfvfl.luna.akamaiapis.net/con
+                               fig-gtm/v1/domains/mydomain.akadns.net}, @{rel=datacenters; href=https://akab-gedolm
+                               7tfx6eem2c-5k64mr4pxhnxfvfl.luna.akamaiapis.net/config-gtm/v1/domains/mydomain.akadn
+                               s.net/datacenters}, @{rel=properties; href=https://akab-gedolm7tfx6eem2c-5k64mr4pxhnxfvf
+                               l.luna.akamaiapis.net/config-gtm/v1/domains/mydomain.akadns.net/properties},
+                               @{rel=geographic-maps; href=https://akab-gedolm7tfx6eem2c-5k64mr4pxhnxfvfl.luna.akamaiap
+                               is.net/config-gtm/v1/domains/mydomain.akadns.net/geographic-maps}…}
+cnameCoalescingEnabled       : False
+defaultErrorPenalty          : 75
+defaultHealthMax             :
+defaultHealthMultiplier      :
+defaultHealthThreshold       :
+defaultMaxUnreachablePenalty :
+defaultSslClientCertificate  :
+defaultSslClientPrivateKey   :
+defaultTimeoutPenalty        : 25
+defaultUnreachableThreshold  :
+deleteRequestId              :
+emailNotificationList        : {}
+endUserMappingEnabled        : False
+lastModified                 : 10/09/2026 19:05:02
+lastModifiedBy               : smacleod
+loadFeedback                 : False
+mapUpdateInterval            : 600
+maxProperties                : 250
+maxResources                 : 512
+maxTestTimeout               : 60
+maxTTL                       : 172800
+minPingableRegionFraction    :
+minTestInterval              : 10
+minTTL                       : 30
+modificationComments         :
+name                         : mydomain.akadns.net
+pingInterval                 :
+pingPacketSize               :
+roundRobinPrefix             :
+servermonitorLivenessCount   :
+servermonitorLoadCount       :
+servermonitorPool            :
+signAndServe                 : False
+signAndServeAlgorithm        :
+type                         : basic
+status                       : @{links=System.Object[]; message=Change Pending;
+                               changeId=c4563653-0d0d-4b23-979e-0d0f924b2a16; propagationStatus=PENDING;
+                               propagationStatusDate=10/09/2026 19:05:02; passingValidation=True}
+loadImbalancePercentage      :
+domainVersionId              : c4563653-0d0d-4b23-979e-0d0f924b2a16
+resources                    : {}
+properties                   : {}
+datacenters                  : {}
+geographicMaps               : {}
+cidrMaps                     : {}
+asMaps                       : {}
+```
+
+There are many, many more options you can specify, but a lot of them are ones you can create after the fact with individual commands which might be easier to understand. For instance, when creating a domain you can include an array of `properties`, and another of `datacenters`, or you can include `asMaps`, `cidrMaps`, `geographicMaps`, and `resources`. If you already have these defined, say if you are cloning an existing domain, then you can certainly include them, but they can also be added later.
+
+### Retrieving Domains
+
+You can list all domains in an account, or retrieve a specific domain with `Get-GTMDomain`. One key difference to note here is that the content you retrieve when list all domains is NOT the same as when you retrieve a single domain. Elements like `properties`, `datacenters`, `geographicMaps`, `asMaps`, and `cidrMaps` are not included in the list of domains, but are included when retrieving a single domain.
+
+> Certain APIs return the same info when listing objects as when retrieving individuals, while others don't. It is always good practice to identify what data you can get from each command, as this can save a lot of headaches later.
+
+For example, this is the output of `Get-GTMDomain` when filtering for a specific domain, rather than retrieving it specifically.
+
+```powershell
+Get-GTMDomain | Where-Object name -eq 'mydomain.akadns.net'
+
+name                  : mydomain.akadns.net
+status                : 2026-09-11 02:05 GMT: Configuration validated by back end; propagation in progress...
+acgId                 : 1-1AB23C
+lastModified          : 10/09/2026 19:05:02
+lastModifiedBy        : smacleod
+changeId              : c4563653-0d0d-4b23-979e-0d0f924b2a16
+activationState       : PENDING
+modificationComments  :
+signAndServe          : False
+signAndServeAlgorithm :
+deleteRequestId       :
+links                 : {@{rel=self; href=https://akab-gedolm7tfx6eem2c-5k64mr4pxhnxfvfl.luna.akamaiapis.net/config-gtm
+                        /v1/domains/mydomain.akadns.net}}
+id                    : 276000
+```
+
+### Updating Domains
+
+If you retrieve your domain specifically, e.g. `Get-GTMDomain -DomainName mydomain.akadns.net`, the returned object contains every element in the domain, including all of its child resources. Therefore you can, if you choose, work only with the domain object, and ignore the commands specific to properties, datacenters etc.
+
+So, let's say you wanted to flip the targets of a property `www.mydomain.akadns.net`:
+
+```powershell
+# Retrieve domain
+$Domain = Get-GTMDomain -DomainName mydomain.akadns.net
+
+# Find the relevant property
+$Property = $Domain.properties | Where-Object name -eq 'www'
+
+# Inspect the targets
+$Property.trafficTargets
+
+datacenterId  : 10
+enabled       : True
+weight        : 0
+precedence    : 0
+handoutCName  :
+handoutRRSets : {}
+name          :
+servers       : {1.1.1.1}
+
+datacenterId  : 11
+enabled       : True
+weight        : 0
+precedence    : 1
+handoutCName  :
+handoutRRSets : {}
+name          :
+servers       : {2.2.2.2}
+
+# Flip the precedence
+$Property.trafficTargets[0].precedence = 1
+$Property.trafficTargets[1].precedence = 0
+
+# Update the domain
+$Domain | Set-GTMDomain
+```
+
+Because PowerShell uses object references, the `$Property` variable is a reference to the property in the `$Domain` object, so when you update the precedence of the traffic targets, you are updating the domain object itself. Therefore, when you pipe the domain to `Set-GTMDomain`, it will update the property as well.
+
+> When using `Set-GTMDomain` with a piped object you need not provide the `-DomainName` parameter, as the domain name is included in the object itself. However, if you are using `Set-GTMDomain` using the `-Body` parameter you are required to add `-DomainName` explicitly. This is common across the Akamai modules, and is one of many reasons we encourage the use of the pipeline.
+
+### A note on activation
+
+GTM has no concept of activation, unlike most other Akamai APIs. Nor has it the concept of staging vs production. Nor even does it have a concept of versions. So, when you call `Set-GTMDomain` the changes will be pushed out _immediately_ (it takes about a minute), with no way to cancel the activation or roll back if it goes wrong. Be _EXTREMELY_ careful when making changes using the GTM API, with any client, as things can go horribly wrong. Trust me.
+
+Therefore, it's a good practice to back up your domain before making changes, e.g. to a JSON file. That way, if the worst happens, you can make another `Set-GTMDomain` command and undo your mistake.
+
+```powershell
+$Domain = Get-GTMDomain -DomainName mydomain.akadns.net
+$Domain | ConvertTo-Json -Depth 10 | Out-File -FilePath .\mydomain-backup.json
+
+# Make changes to your domain object
+$Domain | Set-GTMDomain
+
+# PANIC!
+Look-Scared
+Scream-Loudly
+Wave-ArmsAbout
+
+# Remember you had a plan for this!
+Get-Content -Raw -Path .\mydomain-backup.json | ConvertFrom-Json -Depth 10 | Set-GTMDomain
+```
+
+## Working with Datacenters
+
+Before you can create any properties you must create datacenters as IDs for each of the traffic targets your properties will use. Datacenters are typically standard ones manually created with a given location, but there are also default datacenter types (which predefined IDs) which you need to understand for certain property types.
+
+### Default Datacenters
+
+There are three types of default datacenters: the overall default which is used in conjunction with CIDR, geographic and AS maps, and the default for IPv4 and IPv6, which are used with IP version selector properties. 
+
+The overall default datacenter can be created like this:
+
+```powershell
+New-GTMDatacenter -DomainName mydomain.akadns.net
+
+links                         : {@{rel=self; href=https://akab-gedolm7tfx6eem2c-5k64mr4pxhnxfvfl.luna.akamaiapis.net/co
+                                nfig-gtm/v1/domains/mydomain.akadns.net/datacenters/5400}}
+datacenterId                  : 5400
+nickname                      : Default Datacenter
+scorePenalty                  : 0
+city                          :
+stateOrProvince               :
+country                       :
+latitude                      : 0
+longitude                     : 0
+cloneOf                       :
+cloud                         :
+defaultLoadObject             :
+continent                     :
+servermonitorPool             :
+servermonitorLivenessCount    :
+servermonitorLoadCount        :
+pingInterval                  :
+pingPacketSize                :
+cloudServerTargeting          : False
+cloudServerHostHeaderOverride : False
+virtual                       : True
+```
+
+> Note the datacenterId is 5400, which is always the case.
+
+You can create the default datacenter for IPv4 and IPv6 with `New-GTMDefaultDatacenterForIP`, which requires you provide the IP version you wish.
+
+* IPv4
+```powershell
+New-GTMDefaultDatacenterForIP -DomainName mydomain.akadns.net -IPVersion ipv4
+
+links                         : {@{rel=self; href=https://akab-gedolm7tfx6eem2c-5k64mr4pxhnxfvfl.luna.akamaiapis.net/co
+                                nfig-gtm/v1/domains/mydomain.akadns.net/datacenters/5401}}
+datacenterId                  : 5401
+nickname                      : Target for A records
+scorePenalty                  : 0
+city                          :
+stateOrProvince               :
+country                       :
+latitude                      : 0
+longitude                     : 0
+cloneOf                       :
+cloud                         :
+defaultLoadObject             :
+continent                     :
+servermonitorPool             :
+servermonitorLivenessCount    :
+servermonitorLoadCount        :
+pingInterval                  :
+pingPacketSize                :
+cloudServerTargeting          : False
+cloudServerHostHeaderOverride : False
+virtual                       : True
+```
+
+* IPv6
+```
+New-GTMDefaultDatacenterForIP -DomainName mydomain.akadns.net -IPVersion ipv6
+
+links                         : {@{rel=self; href=https://akab-gedolm7tfx6eem2c-5k64mr4pxhnxfvfl.luna.akamaiapis.net/co
+                                nfig-gtm/v1/domains/mydomain.akadns.net/datacenters/5402}}
+datacenterId                  : 5402
+nickname                      : Target for AAAA records
+scorePenalty                  : 0
+city                          :
+stateOrProvince               :
+country                       :
+latitude                      : 0
+longitude                     : 0
+cloneOf                       :
+cloud                         :
+defaultLoadObject             :
+continent                     :
+servermonitorPool             :
+servermonitorLivenessCount    :
+servermonitorLoadCount        :
+pingInterval                  :
+pingPacketSize                :
+cloudServerTargeting          : False
+cloudServerHostHeaderOverride : False
+virtual                       : True
+```
+
+> The datacenterId for IPv4 is always 5401, and for IPv6 is always 5402.
+
+### User-defined Datacenters
+
+More commonly, you will create and manage your own datacenters. These are effectively just IDs you create, but if you are using performance-based properties, setting the geography for the datacenter allows GTM to pick the best target for your request based on the location of the requesting DNS forwarder IP. What datacenters do _not_ contain, which is important to understand, are the IP addresses or hostnames your properties actually resolve to. These are set at the property level, which we will see later, while the datacenter is simply an ID with optional geography which is connected to the IP or hostname.
+
+Let's create a standard datacenter using `New-GTMDatacenter` with the fewest required fields:
+
+```powershell
+New-GTMDatacenter -DomainName mydomain.akadns.net -Body @{ nickname = 'dc1' }
+
+links                         : {@{rel=self; href=https://akab-gedolm7tfx6eem2c-5k64mr4pxhnxfvfl.luna.akamaiapis.net/config-gtm/v1/domains/mydomain.akadns.net/datacenters/1}}
+datacenterId                  : 1
+nickname                      : dc1
+scorePenalty                  : 0
+city                          :
+stateOrProvince               :
+country                       :
+latitude                      :
+longitude                     :
+cloneOf                       :
+cloud                         :
+defaultLoadObject             :
+continent                     :
+servermonitorPool             :
+servermonitorLivenessCount    :
+servermonitorLoadCount        :
+pingInterval                  :
+pingPacketSize                :
+cloudServerTargeting          : False
+cloudServerHostHeaderOverride : False
+virtual                       : True
+```
+
+This obviously has no geography set, but it is a valid datacenter. Note the `datacenterId`, which begins at 1 and will increment for all new user-created datacenters.
+
+Now, here is an example of creating a datacenter with geographic elements, which will not required, is recommended.
+
+```powershell
+$DCWithGeo = @{
+    nickname        = 'dc2'
+    city            = 'Edinburgh'
+    stateOrProvince = 'City of Edinburgh'
+    country         = 'GB'
+    continent       = 'EU'
+    latitude        = 55.9533
+    longitude       = -3.1883
+}
+New-GTMDatacenter -DomainName mydomain.akadns.net -Body $DCWithGeo
+```
+
+> As always with GTM, there are loads more options you might choose to use here, in particular `cloudServerTargeting`. You should set this to true if your targets are hosted in a cloud platform such as Linode or AWS.
+
+You can retrieve your datacenter objects with `Get-GTMDatacenter`, as usual with a list or by datacenterId.
+
+```powershell
+# List all Datacenters
+$Datacenters = Get-GTMDatacenter -DomainName mydomain.akadns.net
+
+# Get one datacenter
+$Datacenter = Get-GTMDatacenter -DomainName mydomain.akadns.net -DatacenterId 1
+```
+
+You then update your datacenter with `Set-GTMDatacenter`.
+
+```powershell
+# Set cloudServerTargeting to true for datacenter 2
+$Datacenter.cloudServerTargeting = $true
+$Datacenter | Set-GTMDatacenter -DomainName mydomain.akadns.net
+```
+
+Finally, if you wish to remove your datacenter, you can do so with `Remove-GTMDatacenter`, but only if no properties reference them.
+
+```powershell
+$Datacenter | Remove-GTMDatacenter -DomainName mydomain.akadns.net
+```
+
+> Note: the -DomainName parameter is required, even when piping, as it is not contained in the piped object. For commands which deal with the whole domain, where it is contained in the object, it is inferred.
+
+## Working with Properties
+
+Properties are the area where you will likely spend most of your time when working with GTM. All properties utilise datacenters, and in some cases can use maps (see below), but these objects tend to be static. Properties, and in particular their traffic targets, are the ones which most often change and thus require function calls to manage.
+
+Properties can be created with `New-GTMProperty`, which once again requires a (potentially) complex request body. Here is an example of creating a property in its simplest form, but often it is easier to find a property you already have, even in another domain, and use it as the basis for your new request body.
+
+```powershell
+$NewPropertyBody = '{
+  "dynamicTTL": 60,
+  "handoutMode": "normal",
+  "ipv6": false,
+  "scoreAggregationType": "worst",
+  "type": "weighted-round-robin",
+  "name": "www",
+  "trafficTargets": [
+    {
+      "datacenterId": 1,
+      "servers": [
+        "1.2.3.4"
+      ],
+      "weight": 1,
+      "enabled": true
+    }
+  ]
+}'
+New-GTMProperty -DomainName mydomain.akadns.net -PropertyName www -Body $NewPropertyBody
+
+inks                          : {@{rel=self; href=https://akab-gedolm7tfx6eem2c-5k64mr4pxhnxfvfl.luna.akamaiapis.net/config-gtm/v1/domains/mydomain.akad
+                                 ns.net/properties/www}}
+backupCName                    :
+backupIp                       :
+balanceByDownloadScore         : False
+cname                          :
+comments                       :
+dynamicTTL                     : 60
+failoverDelay                  :
+failbackDelay                  :
+ghostDemandReporting           : False
+handoutMode                    : normal
+handoutLimit                   : 8
+healthMax                      :
+healthMultiplier               :
+healthThreshold                :
+lastModified                   : 16/09/2026 10:37:02
+livenessTests                  : {}
+loadImbalancePercentage        :
+mapName                        :
+maxUnreachablePenalty          :
+minLiveFraction                :
+minActiveDatacenterFraction    :
+mxRecords                      : {}
+name                           : www
+scoreAggregationType           : worst
+stickinessBonusConstant        :
+stickinessBonusPercentage      :
+stateChangeNotificationWebhook :
+staticTTL                      :
+staticRRSets                   : {}
+trafficTargets                 : {@{datacenterId=1; enabled=True; weight=1; precedence=; handoutCName=; handoutRRSets=; name=; servers=System.Object[]}}
+type                           : weighted-round-robin
+unreachableThreshold           :
+useComputedTargets             : False
+weightedHashBitsForIPv4        :
+weightedHashBitsForIPv6        :
+ipv6                           : False
+```
+
+> This example uses JSON, whereas the previous ones were PSCustomObjects. Either is fine in PowerShell.
+
+In the above example, a few things should be explain:
+- `dynamicTTL` - the TTL for the property, in seconds.
+- `ipv6` - If your `servers` within `trafficTargets` use IPv6 address, this must be true. GTM properties cannot give out a mixture of IPv4 and IPv6 addresses, as they are designed to respond to A and AAAA queries separately. If you want to support both, you must create two properties, then an IP version selector property to link them to a single hostname.
+- `type` - The type of property to use. There are various options here, such as `performance`, `qtr` (IP version selector), `geographic` and so on. Check the API reference page for a full list, you can get the link by running `Get-Help New-GTMProperty`.
+- `trafficTargets` - An array of objects, specifying the datacenterId(s) you created previously, and either an array of `servers` (can be one or more), or a `handoutCName`.
+    - `enabled` must be present, and at least one traffic target must be enabled.
+    - `weight` is used for weighted property types, and is relevant, i.e if you have 2 targets whose weights are 2 and 3, the first will receive 40% of the traffic, and the second 60%. If you have a property with only one target, the weight is irrelevant. It is a common practice to set these weights to percentages to make it easier to understand, i.e. 40 and 60 rather than 2 and 3.
+    - `precedence` is used for `ranked0-failover` property types, and determines the order in which targets will be tried. Lower precedence targets are tried first.
+
+As always with GTM, there are many, many more options for you to specify and configure. We'd recommend creating reference properties in a test domain in the UI, then pulling them down as JSON templates to use in others, just to get your head around the schema.
+
+Once your property is created, you can retrieve it with `Get-GTMProperty`, and update it with `Set-GTMProperty`. You can then finally remove it with `Remove-GTMProperty`.
+
+```powershell
+# List all properties
+$Properties = Get-GTMProperty -DomainName mydomain.akadns.net
+
+# Get one property
+$Property = Get-GTMProperty -DomainName mydomain.akadns.net -PropertyName www
+
+# Update a property
+$Property.dynamicTTL = 120
+$Property.trafficTargets[0].weight = 1
+$Property.trafficTargets[1].weight = 0
+$Property | Set-GTMProperty -DomainName mydomain.akadns.net
+
+# Remove your property
+$Property | Remove-GTMProperty -DomainName mydomain.akadns.net
+```
+
+## Working with Maps
+
+GTM allows you lots of flexibility in terms of handing out different results to clients in different geos, AS numbers, and client IP CIDRs. For this you need to define the relevant map type, then create properties referencing these maps.
+
+All map types in Akamai PowerShell support the standard `New`, `Get`, `Set` and `Remove` commands for CRUD operations.
+
+Below are examples of bodies you can use to create the various map types, though as always it is easier to create maps in the UI and retrieve the content to use as templates.
+
+* AS Map
+```json
+{
+  "name": "my-as-map",
+  "assignments": [
+    {
+      "datacenterId": 1,
+      "asNumbers": [
+        12345
+      ],
+      "nickname": "aszone1"
+    }
+  ],
+  "defaultDatacenter": {
+    "datacenterId": 5400,
+    "nickname": "Default (all others)"
+  }
+}
+```
+
+> Note the use of the default datacenterId 5400, which must be created first before it can be used.
+
+* CIDR Map
+```json
+{
+  "name": "my-cidr-map",
+  "assignments": [
+    {
+      "datacenterId": 1,
+      "blocks": [
+        "1.2.3.0/24"
+      ],
+      "nickname": "CIDRZone1"
+    }
+  ],
+  "defaultDatacenter": {
+    "datacenterId": 5400,
+    "nickname": "All Other CIDR Blocks"
+  }
+}
+```
+
+* Geographic Map
+```json
+{
+  "name": "my-geo-map",
+  "assignments": [
+    {
+      "datacenterId": 1,
+      "nickname": "Just Scotland",
+      "countries": [
+        "GB/SC"
+      ]
+    }
+  ],
+  "defaultDatacenter": {
+    "datacenterId": 5400,
+    "nickname": "All the rubbish parts of the world"
+  }
+}
+```
+
+> Getting the right country codes for your geographic maps can be tricky. The Akamai API uses ISO 3166-1 alpha-2 country codes, and ISO 3166-2 subdivision codes (such as US state), separated by a forward slash. You can find a list of these codes at [ISO.org](https://www.iso.org/iso-3166-country-codes.html).

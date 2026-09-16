@@ -1,12 +1,6 @@
 {
-  "property-manager": {
-    "title": "Property Manager"
-  },
   "app-and-api-protector": {
     "title": "App and API Protector"
-  },
-  "edgeworkers": {
-    "title": "EdgeWorkers"
   },
   "certificates": {
     "title": "Certificates"
@@ -14,11 +8,20 @@
   "edge-dns": {
     "title": "Edge DNS"
   },
+  "edgeworkers": {
+    "title": "EdgeWorkers"
+  },
+  "gtm": {
+    "title": "Global Traffic Manager (GTM)"
+  },
   "lists": {
     "title": "Lists"
   },
   "netstorage": {
     "title": "NetStorage"
+  },
+  "property-manager": {
+    "title": "Property Manager"
   },
   "pm-bulk-api": {
     "title": "Property Manager Bulk API"

@@ -26,40 +26,46 @@ $Files[0].FullName # You can access a specific property of a given object indivi
 C:\code\powershell-training-docs\.github
 ```
 
-## Modules
+## Installing Modules
 
 PowerShell comes preinstalled with a large selection of functions, but you can also install external modules for almost anything from the PowerShell Gallery, or make your own.
 
-Modules can be installed by running
+The Akamai modules, for instance, can be installed by running:
 
 ```powershell
-Install-Module SomeModule
+Install-Module Akamai -Scope CurrentUser
 ```
 
 or on later versions
 
 ```powershell
-Install-PSResource SomeModule
+Install-PSResource Akamai -Scope CurrentUser -TrustRepository
 ```
 
-The `Install-PSResource` command is typically much faster, but is not available out of the box with the older version of PowerShell which comes preinstalled in Windows. You can install it by running
+The Akamai modules are actually a collection of around 35 sub-modules, but we've structured them in such a way that if you install the top-level `Akamai` module, all child modules for all APIs will be installed alongside. If you would rather install just a single module, you can do so like this:
+
+```powershell
+Install-Module Akamai.Property -Scope CurrentUser
+```
+
+The `Akamai.Common` is required by all other modules, so will always be installed whether you install the parent module or one of the sub-modules.
+
+You can also use this process to install other third-party modules, for whatever else you may be working on. There are highly popular modules for Azure and AWS, as well as less well-known ones such as `ImportExcel` which allows you to interact directly with `.xlsx` files and `powershell-yaml`, which allows you to convert to and from YAML just as you might do with JSON.
+
+> If you run `Install-Module` or `Install-PSResource` without a `-Scope` parameter it will attempt to install the module for all users, which requires elevated privileges. Whether or not you possess these privileges it is generally good practice to install for your user only, which requires no higher-level permissions. You can do this by adding `-Scope CurrentUser` to your command.
+
+### Install-Module vs Install-PSResource
+
+The `Install-PSResource` command is more modern and typically much faster, but is not available out of the box with the older version of PowerShell which comes preinstalled in Windows (it is available automatically on Mac and Linux). Ideally, you should simply install the latest version of PowerShell and enjoy its many (many) improvements, but if this is not possible you can install the `Install-PSResource` command in PowerShell 5.1 by running:
 
 ```powershell
 Install-Module PowerShellGet -Force
 ```
 
-> If you run `Install-Module` without a `-Scope` parameter it will attempt to install the module for all users, which requires elevated privileges. If you do not have these privileges you can install the module for your user only by running `Install-Module SomeModule -Scope CurrentUser`.
+## Trusting Repositories
 
-> Unless you have updated your local preferences, the PowerShell Gallery is not a trusted source, and you will be prompted to confirm that you wish to install the module. You can avoid this prompt by running `Install-PSResource -TrustRepository` to avoid the prompt, or `Set-PSRepository -Name PSGallery -InstallationPolicy Trusted` to mark the gallery as a trusted source for all future installs. Alternatively, if you are using `Install-Module` you can use the `-Force` parameter to avoid the prompt.
+Unless you have updated your local preferences, the PowerShell Gallery is not a trusted source, and you will be prompted to confirm that you wish to install any module from there. You can avoid this prompt in various ways depending on your install command.
 
-## Case Sensitivity
+If you are using `Install-PSResource`, you can add the `-TrustRepository` parameter to your command, which will trust the repository for this install only. Or you can run `Set-PSRepository -Name PSGallery -InstallationPolicy Trusted` to mark the gallery as a trusted source for all future installs.
 
-PowerShell, even when run on a case-sensitive operating system like MacOS, is case-insensitive. This means that all command names, parameters and values are case-insensitive. For example, the following commands are all equivalent:
-
-```powershell
-Get-Property -PropertyName MyProperty
-get-property -propertyname myproperty
-GET-PROPERTY -PROPERTYNAME MYPROPERTY
-```
-
-If you need to filter objects or similar using a case _sensitive_ match, this is also supported, and remember that the data you pass to APIs, such as Akamai, can be case-sensitive.
+If you are using `Install-Module`, you can add the `-Force` parameter to your command, which will trust the repository for this single install. Or you can run `Set-PSRepository -Name PSGallery -InstallationPolicy Trusted` to mark the gallery as a trusted source for the future.
