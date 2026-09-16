@@ -15,12 +15,12 @@ The `New-GTMDomain` command requires a request body, due to the many complex opt
 ```powershell
 New-GTMDomain -ContractID 1-1AB23C -GroupID 123456 -Body @{ name = "mydomain.akadns.net"; type = "basic" }
 
-links                        : {@{rel=self; href=https://akab-gedolm7tfx6eem2c-5k64mr4pxhnxfvfl.luna.akamaiapis.net/con
+links                        : {@{rel=self; href=https://akab-h05tnam3wl42son7nktnlnnx-kbob3i3v.luna.akamaiapis.net/con
                                fig-gtm/v1/domains/mydomain.akadns.net}, @{rel=datacenters; href=https://akab-gedolm
                                7tfx6eem2c-5k64mr4pxhnxfvfl.luna.akamaiapis.net/config-gtm/v1/domains/mydomain.akadn
                                s.net/datacenters}, @{rel=properties; href=https://akab-gedolm7tfx6eem2c-5k64mr4pxhnxfvf
                                l.luna.akamaiapis.net/config-gtm/v1/domains/mydomain.akadns.net/properties},
-                               @{rel=geographic-maps; href=https://akab-gedolm7tfx6eem2c-5k64mr4pxhnxfvfl.luna.akamaiap
+                               @{rel=geographic-maps; href=https://akab-h05tnam3wl42son7nktnlnnx-kbob3i3v.luna.akamaiap
                                is.net/config-gtm/v1/domains/mydomain.akadns.net/geographic-maps}…}
 cnameCoalescingEnabled       : False
 defaultErrorPenalty          : 75
@@ -94,7 +94,7 @@ modificationComments  :
 signAndServe          : False
 signAndServeAlgorithm :
 deleteRequestId       :
-links                 : {@{rel=self; href=https://akab-gedolm7tfx6eem2c-5k64mr4pxhnxfvfl.luna.akamaiapis.net/config-gtm
+links                 : {@{rel=self; href=https://akab-h05tnam3wl42son7nktnlnnx-kbob3i3v.luna.akamaiapis.net/config-gtm
                         /v1/domains/mydomain.akadns.net}}
 id                    : 276000
 ```
@@ -180,7 +180,7 @@ The overall default datacenter can be created like this:
 ```powershell
 New-GTMDatacenter -DomainName mydomain.akadns.net
 
-links                         : {@{rel=self; href=https://akab-gedolm7tfx6eem2c-5k64mr4pxhnxfvfl.luna.akamaiapis.net/co
+links                         : {@{rel=self; href=https://akab-h05tnam3wl42son7nktnlnnx-kbob3i3v.luna.akamaiapis.net/co
                                 nfig-gtm/v1/domains/mydomain.akadns.net/datacenters/5400}}
 datacenterId                  : 5400
 nickname                      : Default Datacenter
@@ -212,7 +212,7 @@ You can create the default datacenter for IPv4 and IPv6 with `New-GTMDefaultData
 ```powershell
 New-GTMDefaultDatacenterForIP -DomainName mydomain.akadns.net -IPVersion ipv4
 
-links                         : {@{rel=self; href=https://akab-gedolm7tfx6eem2c-5k64mr4pxhnxfvfl.luna.akamaiapis.net/co
+links                         : {@{rel=self; href=https://akab-h05tnam3wl42son7nktnlnnx-kbob3i3v.luna.akamaiapis.net/co
                                 nfig-gtm/v1/domains/mydomain.akadns.net/datacenters/5401}}
 datacenterId                  : 5401
 nickname                      : Target for A records
@@ -240,7 +240,7 @@ virtual                       : True
 ```
 New-GTMDefaultDatacenterForIP -DomainName mydomain.akadns.net -IPVersion ipv6
 
-links                         : {@{rel=self; href=https://akab-gedolm7tfx6eem2c-5k64mr4pxhnxfvfl.luna.akamaiapis.net/co
+links                         : {@{rel=self; href=https://akab-h05tnam3wl42son7nktnlnnx-kbob3i3v.luna.akamaiapis.net/co
                                 nfig-gtm/v1/domains/mydomain.akadns.net/datacenters/5402}}
 datacenterId                  : 5402
 nickname                      : Target for AAAA records
@@ -275,7 +275,7 @@ Let's create a standard datacenter using `New-GTMDatacenter` with the fewest req
 ```powershell
 New-GTMDatacenter -DomainName mydomain.akadns.net -Body @{ nickname = 'dc1' }
 
-links                         : {@{rel=self; href=https://akab-gedolm7tfx6eem2c-5k64mr4pxhnxfvfl.luna.akamaiapis.net/config-gtm/v1/domains/mydomain.akadns.net/datacenters/1}}
+links                         : {@{rel=self; href=https://akab-h05tnam3wl42son7nktnlnnx-kbob3i3v.luna.akamaiapis.net/config-gtm/v1/domains/mydomain.akadns.net/datacenters/1}}
 datacenterId                  : 1
 nickname                      : dc1
 scorePenalty                  : 0
@@ -370,7 +370,7 @@ $NewPropertyBody = '{
 }'
 New-GTMProperty -DomainName mydomain.akadns.net -PropertyName www -Body $NewPropertyBody
 
-inks                          : {@{rel=self; href=https://akab-gedolm7tfx6eem2c-5k64mr4pxhnxfvfl.luna.akamaiapis.net/config-gtm/v1/domains/mydomain.akad
+inks                          : {@{rel=self; href=https://akab-h05tnam3wl42son7nktnlnnx-kbob3i3v.luna.akamaiapis.net/config-gtm/v1/domains/mydomain.akad
                                  ns.net/properties/www}}
 backupCName                    :
 backupIp                       :
